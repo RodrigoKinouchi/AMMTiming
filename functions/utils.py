@@ -2,6 +2,9 @@ import pandas as pd
 from functions.constants import piloto_modelo, modelo_cor
 import plotly.express as px
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import streamlit as st
 
 
 def separar_pilotos_por_volta(df):
@@ -258,4 +261,288 @@ def gerar_grafico_gap_vs_volta(filtered_data, piloto):
         ],
         title_font=dict(size=24)  # Definindo o tamanho do título aqui
     )
+    return fig
+
+
+def montar_dataframe_resultado_corrida(driver_info, equipes_pilotos):
+    """Gera o dataframe final do resultado da corrida com base nas voltas de cada piloto."""
+    dados_resultado = []
+
+    for piloto, df_piloto in driver_info.items():
+        if not df_piloto.empty:
+            ultima_volta = df_piloto['Lap'].max()
+            equipe = equipes_pilotos.get(piloto, 'Desconhecida')
+            dados_resultado.append(
+                {'Piloto': piloto, 'Equipe': equipe, 'Voltas': ultima_volta})
+
+    df_resultado = pd.DataFrame(dados_resultado)
+
+    # Ordena do maior para menor número de voltas
+    df_resultado = df_resultado.sort_values(
+        by='Voltas', ascending=False).reset_index(drop=True)
+
+    # Adiciona coluna de posição
+    df_resultado.insert(0, 'Posição', df_resultado.index + 1)
+
+    return df_resultado
+
+
+def colorir_piloto(row):
+    color_map = {
+        '83 - Gabriel Casagrande': 'background-color: purple; color: white;',
+        '12 - Lucas Foresti': 'background-color: gray; color: white;',
+        '30 - Cesar Ramos': 'background-color: yellow; color: black;',
+        '21 - Thiago Camilo': 'background-color: red; color: white;',
+    }
+
+    piloto = row['Piloto']
+    style = color_map.get(piloto, '')
+    return [style] * len(row)
+
+
+def criar_matriz_velocidades(driver_info: dict) -> pd.DataFrame:
+    """
+    Cria um DataFrame onde cada coluna representa um piloto
+    e cada linha representa uma velocidade ST, ordenadas do maior para o menor.
+    """
+    colunas = []
+
+    for piloto, df in driver_info.items():
+        if 'ST' in df.columns:
+            st_sorted = df['ST'].dropna().astype(float).sort_values(
+                ascending=False).reset_index(drop=True)
+            # renomeia a Series com o nome do piloto
+            colunas.append(st_sorted.rename(piloto))
+
+    # Junta todas as colunas em um DataFrame, alinhando por índice
+    df_velocidades = pd.concat(colunas, axis=1)
+
+    # Ordena as colunas pelo número do carro (antes do ' - ')
+    def extrair_numero(piloto):
+        try:
+            return int(piloto.split(' - ')[0])
+        except:
+            return float('inf')
+
+    df_velocidades = df_velocidades[sorted(
+        df_velocidades.columns, key=extrair_numero)]
+
+    return df_velocidades
+
+
+def formatar_st_com_cores_interativo(df: pd.DataFrame) -> pd.io.formats.style.Styler:
+    """
+    Aplica formatação condicional em uma matriz de velocidades ST:
+    - O valor máximo (verde claro) é fixo (maior valor do DataFrame).
+    - O valor mínimo (vermelho escuro) pode ser ajustado pelo usuário.
+    - Exibe os valores com uma casa decimal mantendo tipo float.
+    """
+    # Define o valor máximo absoluto
+    max_val = df.max().max()
+
+    # Input para o valor mínimo (usuário ajusta)
+    min_val = st.number_input(
+        "Defina o valor mínimo de destaque (vermelho escuro)",
+        min_value=0.0,
+        max_value=max_val - 1,
+        value=max_val - 20,
+        step=0.5
+    )
+
+    # Função de normalização baseada em min_val fixo e max_val fixo
+    def normalize_val(x):
+        if pd.isna(x):
+            return None
+        if x < min_val:
+            return 0.0
+        if x > max_val:
+            return 1.0
+        return (x - min_val) / (max_val - min_val)
+
+    # Aplica a normalização a cada elemento do DataFrame usando map
+    gmap = df.apply(lambda col: col.map(normalize_val))
+
+    # Colormap padrão
+    cmap = plt.cm.get_cmap('RdYlGn')
+
+    # Aplica estilo e retorna
+    styled = df.style.background_gradient(
+        cmap=cmap, gmap=gmap, axis=None).format(precision=1)
+    return styled
+
+
+def preparar_dados_boxplot(driver_info: dict, piloto_modelo: dict) -> pd.DataFrame:
+    """
+    Prepara um DataFrame longo para boxplot, removendo outliers com ST < max(ST) * 0.85.
+    """
+    registros = []
+
+    for piloto, df_piloto in driver_info.items():
+        modelo = piloto_modelo.get(piloto, 'Desconhecido')
+        for st in df_piloto['ST']:
+            registros.append({'Piloto': piloto, 'ST': st, 'Montadora': modelo})
+
+    df = pd.DataFrame(registros)
+
+    # Remove valores ST considerados muito baixos (outliers)
+    max_st = df['ST'].max()
+    limite_minimo = max_st * 0.85
+    df_filtrado = df[df['ST'] >= limite_minimo]
+
+    return df_filtrado
+
+
+def gerar_boxplot_st(df_filtrado: pd.DataFrame) -> px.box:
+    """
+    Gera boxplot de ST por piloto, colorido pela montadora com cores fixas.
+    """
+    fig = px.box(
+        df_filtrado,
+        x='Piloto',
+        y='ST',
+        color='Montadora',
+        title='Distribuição de Velocidade por Piloto',
+        labels={'ST': 'Velocidade (ST)', 'Piloto': 'Piloto'},
+        points='all',
+        color_discrete_map=modelo_cor  # Aplica as cores fixas
+    )
+
+    fig.update_layout(
+        title_x=0.38,
+        annotations=[  # Adicionando a anotação
+            dict(
+                text="Clique e arraste o eixo Y para alterar a escala",
+                xref="paper", yref="paper",
+                x=0.5, y=1.08,
+                showarrow=False,
+                font=dict(size=12, color="gray"),
+                align="center"
+            )
+        ]
+    )
+
+    return fig
+
+
+def calcular_st_maior_e_media(df: dict) -> pd.DataFrame:
+    """
+    Calcula o maior ST e a média dos 5 maiores ST registrados para cada piloto.
+
+    :param df: Dicionário contendo os dados dos pilotos, organizado por piloto.
+    :return: DataFrame com as colunas 'Maior ST' e 'Média dos 5 maiores ST'.
+    """
+    dados = []
+
+    for piloto, info in df.items():
+        # Obtém os valores de ST do piloto
+        st_values = info['ST'].dropna().values
+
+        if len(st_values) > 0:
+            maior_st = st_values.max()
+            # Média dos 5 maiores ST, ou a média de todos se houver menos de 5
+            media_top_5 = st_values[-5:].mean() if len(
+                st_values) >= 5 else st_values.mean()
+
+            dados.append({
+                'Piloto': piloto,
+                'Maior ST': maior_st,
+                'Média dos 5 maiores ST': media_top_5
+            })
+
+    return pd.DataFrame(dados)
+
+
+def plotar_maior_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
+    """
+    Cria o gráfico de barras para o maior ST registrado de cada piloto, colorido por montadora.
+
+    :param df: DataFrame com as colunas 'Piloto' e 'Maior ST'.
+    :param modelo_cor: Dicionário de cores por montadora.
+    :return: Gráfico de barras.
+    """
+    # Ordena os dados do maior para o menor
+    df = df.sort_values(by='Maior ST', ascending=False)
+
+    # Calcular o valor máximo e o valor mínimo para o eixo Y
+    y_max = max(df['Maior ST']) * 1.01  # Margem de 1% sobre o maior valor
+    y_min = y_max - 15  # Subtrair 15 unidades do valor máximo
+
+    fig = go.Figure()
+
+    # Adicionar barra para o maior ST
+    fig.add_trace(go.Bar(
+        x=df['Piloto'],
+        y=df['Maior ST'],
+        name='Maior ST',
+        marker_color=[modelo_cor.get(modelo, 'gray') for modelo in df['Piloto'].apply(
+            lambda x: piloto_modelo.get(x, 'Desconhecido'))],
+        text=df['Maior ST'],
+        hoverinfo='text',
+        width=0.7
+    ))
+
+    # Atualizar layout com a escala do eixo Y
+    fig.update_layout(
+        title='Maior ST Registrado para Cada Piloto',
+        xaxis_title='Piloto',
+        yaxis_title='ST (km/h)',
+        yaxis=dict(
+            range=[y_min, y_max]  # Define a escala do eixo Y
+        ),
+        height=500,
+        xaxis_tickangle=-45,
+        showlegend=False,
+        margin=dict(t=40, b=100, l=60, r=40)
+    )
+
+    return fig
+
+
+def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
+    """
+    Cria o gráfico de barras para a média dos 5 maiores ST registrados de cada piloto, colorido por montadora.
+
+    :param df: DataFrame com as colunas 'Piloto' e 'Média dos 5 maiores ST'.
+    :param modelo_cor: Dicionário de cores por montadora.
+    :return: Gráfico de barras.
+    """
+    # Arredondar a média dos 5 maiores ST para 1 casa decimal
+    df['Média dos 5 maiores ST'] = df['Média dos 5 maiores ST'].round(1)
+
+    # Ordena os dados do maior para o menor
+    df = df.sort_values(by='Média dos 5 maiores ST', ascending=False)
+
+    # Calcular o valor máximo e o valor mínimo para o eixo Y
+    y_max = max(df['Média dos 5 maiores ST']) * \
+        1.01  # Margem de 1% sobre o maior valor
+    y_min = y_max - 15  # Subtrair 15 unidades do valor máximo
+
+    fig = go.Figure()
+
+    # Adicionar barra para a média dos 5 maiores ST
+    fig.add_trace(go.Bar(
+        x=df['Piloto'],
+        y=df['Média dos 5 maiores ST'],
+        name='Média dos 5 Maiores ST',
+        marker_color=[modelo_cor.get(modelo, 'gray') for modelo in df['Piloto'].apply(
+            lambda x: piloto_modelo.get(x, 'Desconhecido'))],
+        text=df['Média dos 5 maiores ST'],
+        hoverinfo='text',
+        width=0.7
+    ))
+
+    # Atualizar layout com a escala do eixo Y
+    fig.update_layout(
+        title='Média dos 5 Maiores ST Registrados para Cada Piloto',
+        xaxis_title='Piloto',
+        yaxis_title='ST (km/h)',
+        yaxis=dict(
+            range=[y_min, y_max]  # Define a escala do eixo Y
+        ),
+        height=500,
+        xaxis_tickangle=-45,
+        showlegend=False,
+        margin=dict(t=40, b=100, l=60, r=40)
+    )
+
     return fig

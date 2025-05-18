@@ -3,7 +3,7 @@ import streamlit as st
 import plotly.express as px
 from PIL import Image
 import re
-from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta
+from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo
 import plotly.graph_objects as go
 
@@ -305,5 +305,59 @@ if uploaded_file is not None:
 
     if opcao == "Corrida":
 
-        tabs = st.tabs(['Laptimes', 'Sectors', 'Gap Analysis',
+        tabs = st.tabs(['Resultado', 'Speed Report', 'Laptimes', 'Sectors', 'Gap Analysis',
                         'Speed x GAP', 'Ranking by lap'])
+
+        with tabs[0]:
+            df_resultado_corrida = montar_dataframe_resultado_corrida(
+                driver_info, equipes_pilotos)
+
+            st.subheader("Resultado da Corrida")
+
+            # Converte a coluna Voltas para inteiro
+            df_resultado_corrida['Voltas'] = df_resultado_corrida['Voltas'].astype(
+                int)
+            # Aplica o estilo com cor para pilotos específicos
+            styled_df = df_resultado_corrida.style.apply(
+                colorir_piloto, axis=1)
+
+            # Exibe o DataFrame com cor
+            st.dataframe(styled_df, hide_index=True)
+
+        with tabs[1]:
+            st.subheader("Speed Report - Matriz de Velocidades (ST)")
+
+            # Criando a matriz
+            df_matriz_st = criar_matriz_velocidades(driver_info)
+
+            # Aplicando a formatação condicional
+            df_st_formatado = formatar_st_com_cores_interativo(df_matriz_st)
+
+            # Exibindo o DataFrame estilizado
+            st.dataframe(df_st_formatado,
+                         use_container_width=False, hide_index=True)
+
+            # 1. Processa os dados
+            df_boxplot = preparar_dados_boxplot(driver_info, piloto_modelo)
+
+            # 2. Cria o gráfico
+            fig_box = gerar_boxplot_st(df_boxplot)
+
+            # 3. Mostra no Streamlit
+            st.plotly_chart(fig_box, use_container_width=True)
+
+            # Calcular o maior ST e a média dos 5 maiores ST
+            df_st = calcular_st_maior_e_media(driver_info)
+
+            # Gerar o gráfico para o maior ST
+            fig_maior_st = plotar_maior_st(df_st, modelo_cor)
+
+            # Gerar o gráfico para a média dos 5 maiores ST
+            fig_media_top_5_st = plotar_media_top_5_st(df_st, modelo_cor)
+
+            # Exibir os gráficos no Streamlit (se estiver usando Streamlit)
+            st.plotly_chart(fig_maior_st)
+            st.plotly_chart(fig_media_top_5_st)
+
+        with tabs[2]:
+            st.write('Em construção')
