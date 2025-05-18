@@ -3,7 +3,7 @@ import streamlit as st
 import plotly.express as px
 from PIL import Image
 import re
-from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes
+from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo
 import plotly.graph_objects as go
 
@@ -319,7 +319,7 @@ if uploaded_file is not None:
 
     if opcao == "Corrida":
 
-        tabs = st.tabs(['Resultado', 'Speed Report', 'Laptimes', 'Sectors', 'Gap Analysis',
+        tabs = st.tabs(['Resultado', 'Speed Report', 'Laptimes', 'Gap Analysis',
                         'Speed x GAP', 'Ranking by lap'])
 
         with tabs[0]:
@@ -416,3 +416,32 @@ if uploaded_file is not None:
                 st.plotly_chart(fig_laptimes_com_cor, use_container_width=True)
             else:
                 st.plotly_chart(fig_laptimes_sem_cor, use_container_width=True)
+
+            # Carregar os dados dos pilotos usando a função existente
+            driver_info = separar_pilotos_por_volta(df)
+
+            # Gerar o gráfico de linha com todos os pilotos
+            fig_laptimes_linha = gerar_grafico_laptimes_por_volta(driver_info)
+
+            # Exibir no Streamlit
+            st.plotly_chart(fig_laptimes_linha, use_container_width=True)
+
+        with tabs[3]:
+            # Usando a função adaptada
+            gerar_figura_para_piloto_referencia, pilotos = gerar_grafico_gap_para_piloto_referencia(
+                df_completo)
+
+            # Seleção do piloto de referência no Streamlit
+            reference_pilot = st.selectbox(
+                'Selecione o piloto de referência:',
+                pilotos
+            )
+
+            # Gerar e exibir o gráfico quando o piloto for selecionado
+            if reference_pilot:
+                fig = gerar_figura_para_piloto_referencia(reference_pilot)
+                if fig:
+                    st.plotly_chart(fig)
+                else:
+                    st.warning(
+                        f'O piloto {reference_pilot} não possui dados suficientes para análise.')

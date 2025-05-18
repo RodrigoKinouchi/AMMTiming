@@ -754,7 +754,8 @@ def gerar_boxplot_laptimes_sem_cor(df: pd.DataFrame, multiplicador_outlier: floa
         x='Piloto',
         y='Lap_seconds',  # Usando a coluna 'Lap_seconds' no eixo Y
         title="Box Plot - Laptimes por Piloto (Sem Cor por Montadora)",
-        labels={'Lap_seconds': 'Tempo de Volta (s)', 'Piloto': 'Piloto'}
+        labels={'Lap_seconds': 'Tempo de Volta (s)', 'Piloto': 'Piloto'},
+        color='Piloto'
     )
 
     fig.update_layout(
@@ -767,3 +768,107 @@ def gerar_boxplot_laptimes_sem_cor(df: pd.DataFrame, multiplicador_outlier: floa
     )
 
     return fig
+
+
+def gerar_grafico_laptimes_por_volta(driver_info: dict) -> go.Figure:
+    """
+    Gera um gráfico de linha com o tempo de volta (em segundos) por volta para cada piloto.
+
+    Args:
+        driver_info (dict): Dicionário com dados dos pilotos extraído pela função `separar_pilotos_por_volta`.
+
+    Returns:
+        go.Figure: Gráfico de linha (Plotly) com voltas no eixo X e tempo de volta no eixo Y.
+    """
+    fig = go.Figure()
+
+    for piloto, df_piloto in driver_info.items():
+        df_temp = df_piloto.copy()
+        df_temp['Lap_Tm_Segundos'] = df_temp['Lap Tm'].apply(
+            convert_time_to_seconds)
+        df_temp = df_temp.dropna(subset=['Lap_Tm_Segundos'])
+
+        fig.add_trace(go.Scatter(
+            x=df_temp['Lap'],
+            y=df_temp['Lap_Tm_Segundos'],
+            mode='lines+markers',
+            name=piloto
+        ))
+
+    fig.update_layout(
+        title="Ritmo de Corrida por Volta",
+        xaxis_title='Volta',
+        yaxis_title='Tempo de Volta (s)',
+        height=600,
+        hovermode='x unified',
+        title_x=0.38,
+        annotations=[
+            dict(
+                text=f"Clique e arraste o eixo Y para alterar a escala",
+                xref="paper", yref="paper",
+                x=0.5, y=1.08,
+                showarrow=False,
+                font=dict(size=12, color="gray"),
+                align="center"
+            )
+        ]
+    )
+
+    return fig
+
+
+def gerar_grafico_gap_para_piloto_referencia(df_completo: pd.DataFrame, piloto_modelo: dict = None):
+    """
+    Gera gráfico de linha com o GAP por volta de cada piloto em relação a um piloto de referência.
+
+    Args:
+        df_completo (pd.DataFrame): DataFrame com todas as voltas e tempos de cada piloto.
+        piloto_modelo (dict, opcional): Dicionário com mapeamento de pilotos e suas montadoras (para uso futuro).
+
+    Returns:
+        fig (go.Figure): Gráfico Plotly com o GAP entre os pilotos e o piloto de referência.
+        pilotos (list): Lista de pilotos para seleção externa (usado no Streamlit).
+    """
+    # Lista de pilotos disponíveis
+    pilotos = df_completo['Piloto'].unique().tolist()
+
+    # Função interna para gerar o gráfico do GAP para o piloto de referência selecionado
+    def gerar_figura_para_piloto_referencia(reference_pilot: str):
+        if not reference_pilot or reference_pilot not in pilotos:
+            return None
+
+        # Filtra os dados do piloto de referência
+        reference_times = df_completo[df_completo['Piloto'] == reference_pilot]
+        if reference_times.empty:
+            return None
+
+        # Mapeia os tempos do piloto de referência por volta
+        reference_time_dict = reference_times.set_index(
+            'Lap')['Lap_seconds'].to_dict()
+
+        # Calcula o GAP para todos os pilotos em relação ao piloto de referência
+        df_copy = df_completo.copy()
+        df_copy['Reference Time'] = df_copy['Lap'].map(reference_time_dict)
+        df_copy['GAP to Reference'] = df_copy['Lap_seconds'] - \
+            df_copy['Reference Time']
+
+        # Cria o gráfico de linha para o GAP
+        fig = px.line(
+            df_copy,
+            x='Lap',
+            y='GAP to Reference',
+            color='Piloto',
+            title=f'GAP por Volta em Relação a {reference_pilot}',
+            labels={'Lap': 'Volta', 'GAP to Reference': 'GAP (s)'},
+            markers=True
+        )
+
+        # Personaliza o layout do gráfico
+        fig.update_layout(title_x=0.38)
+        fig.update_traces(mode='lines+markers',
+                          marker=dict(size=6, opacity=0.7))
+
+        return fig
+
+    # Retorna a função para o gráfico e a lista de pilotos
+    return gerar_figura_para_piloto_referencia, pilotos
