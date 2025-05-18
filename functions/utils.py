@@ -5,6 +5,12 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import streamlit as st
+from pandas.io.formats.style import Styler
+from fpdf import FPDF
+import os
+import tempfile
+import plotly.io as pio
+import numpy as np
 
 
 def separar_pilotos_por_volta(df):
@@ -48,6 +54,65 @@ def maior_velocidade_por_piloto(driver_info):
         top_speed[piloto] = max_speed
 
     return top_speed
+
+
+def gerar_ranking_st(driver_info: dict, modelo_cor: dict, piloto_modelo: dict, top_n: int = 30) -> pd.DataFrame:
+    """
+    Gera o ranking de ST para todos os pilotos registrados e ordena do maior para o menor.
+
+    Args:
+        driver_info (dict): Dicionário contendo os dados de cada piloto com tempos ST.
+        modelo_cor (dict): Dicionário contendo a cor associada a cada modelo de carro.
+        piloto_modelo (dict): Dicionário contendo a associação de pilotos com seus respectivos modelos de carro.
+        top_n (int): Número de linhas a exibir (padrão é 30).
+
+    Returns:
+        pd.DataFrame: DataFrame com a coluna de rank, nome do piloto, tempo ST e montadora, limitado a `top_n` linhas.
+    """
+    # Criar uma lista para armazenar todos os tempos ST de todos os pilotos
+    all_st_data = []
+
+    # Para cada piloto, adicionar todos os seus tempos ST à lista
+    for piloto, data in driver_info.items():
+        for st in data['ST']:
+            # Ignorar valores 'NaN' ou 'inf' ao adicionar à lista
+            # Usando np.isfinite para verificar valores válidos
+            if pd.notna(st) and np.isfinite(st):
+                all_st_data.append({'Piloto': piloto, 'ST': st})
+
+    # Criar DataFrame com todos os tempos ST registrados
+    df_st = pd.DataFrame(all_st_data)
+
+    # Ordenar os tempos ST do maior para o menor
+    df_st_sorted = df_st.sort_values(by='ST', ascending=False)
+
+    # Adicionar coluna de Rank baseado no ST
+    df_st_sorted['ST Rank'] = df_st_sorted['ST'].rank(
+        # 'Int64' para permitir NaN
+        ascending=False, method='min').astype('Int64')
+
+    # Adicionar a coluna 'Montadora' com base no dicionário piloto_modelo
+    df_st_sorted['Montadora'] = df_st_sorted['Piloto'].map(piloto_modelo)
+
+    # Adicionar a coluna 'Cor' com base na montadora do piloto
+    df_st_sorted['Cor'] = df_st_sorted['Montadora'].map(modelo_cor)
+
+    # Limitar a exibição para as `top_n` melhores linhas
+    df_top = df_st_sorted[['ST Rank', 'Piloto', 'ST', 'Montadora']].head(top_n)
+
+    # Arredondar a coluna ST para 1 casa decimal (ou a quantidade que preferir)
+    df_top['ST'] = df_top['ST'].round(1)
+
+    # Estilizando o DataFrame: aplicando cores nas linhas com base na montadora
+    def colorir_linhas(val):
+        # Pega a cor da montadora ou branco como fallback
+        cor = modelo_cor.get(val, 'white')
+        return f'background-color: {cor}'
+
+    # Aplicando a estilização
+    df_styled = df_top.style.applymap(colorir_linhas, subset=['Montadora'])
+
+    return df_styled
 
 
 def convert_time_to_seconds(time_str):
@@ -330,7 +395,7 @@ def criar_matriz_velocidades(driver_info: dict) -> pd.DataFrame:
     return df_velocidades
 
 
-def formatar_st_com_cores_interativo(df: pd.DataFrame) -> pd.io.formats.style.Styler:
+def formatar_st_com_cores_interativo(df: pd.DataFrame) -> Styler:
     """
     Aplica formatação condicional em uma matriz de velocidades ST:
     - O valor máximo (verde claro) é fixo (maior valor do DataFrame).
@@ -543,6 +608,162 @@ def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
         xaxis_tickangle=-45,
         showlegend=False,
         margin=dict(t=40, b=100, l=60, r=40)
+    )
+
+    return fig
+
+
+def gerar_relatorio_completo_speed_report(df_st, df_matriz_st, fig_box, fig_maior_st, fig_media_top_5_st,
+                                          nome_arquivo="relatorio_speed_report_completo.pdf"):
+    """
+    Gera um relatório PDF com título, tabela, e gráficos do Speed Report.
+
+    Args:
+        df_st (pd.DataFrame): DataFrame com maior e média ST.
+        df_matriz_st (pd.DataFrame): Matriz de ST.
+        fig_box: Boxplot gerado com Plotly.
+        fig_maior_st: Gráfico com maior ST.
+        fig_media_top_5_st: Gráfico com média das 5 maiores ST.
+        nome_arquivo (str): Nome do arquivo gerado (padrão: relatorio_speed_report_completo.pdf).
+
+    Returns:
+        str: Caminho do arquivo PDF gerado.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        box_path = os.path.join(temp_dir, "boxplot.png")
+        maior_path = os.path.join(temp_dir, "maior_st.png")
+        media_path = os.path.join(temp_dir, "media_top5_st.png")
+
+        pio.write_image(fig_box, box_path, format='png', scale=2)
+        pio.write_image(fig_maior_st, maior_path, format='png', scale=2)
+        pio.write_image(fig_media_top_5_st, media_path, format='png', scale=2)
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, "Speed Report - Relatório Completo", ln=True, align='C')
+
+        pdf.set_font("Arial", size=12)
+        pdf.ln(8)
+        pdf.multi_cell(
+            0, 10, "Este relatório contém uma análise detalhada das velocidades ST registradas na corrida.")
+
+        pdf.ln(8)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Resumo de ST por Piloto", ln=True)
+        pdf.set_font("Arial", size=10)
+        for idx, row in df_st.iterrows():
+            pdf.cell(
+                0, 8, f"{row['Piloto']}: Maior ST = {row['Maior ST']:.1f}, Média Top 5 ST = {row['Média Top 5 ST']:.1f}", ln=True)
+
+        pdf.ln(10)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Boxplot por Montadora", ln=True)
+        pdf.image(box_path, w=180)
+
+        pdf.ln(10)
+        pdf.cell(0, 10, "Maior ST por Piloto", ln=True)
+        pdf.image(maior_path, w=180)
+
+        pdf.ln(10)
+        pdf.cell(0, 10, "Média das 5 maiores ST por Piloto", ln=True)
+        pdf.image(media_path, w=180)
+
+        output_path = os.path.join(os.getcwd(), nome_arquivo)
+        pdf.output(output_path)
+        return output_path
+
+
+def gerar_boxplot_laptimes(df: pd.DataFrame, modelo_cor: dict, multiplicador_outlier: float):
+    """Gera o boxplot dos laptimes dos pilotos, com filtragem interativa de outliers.
+
+    Argumentos:
+        df (pd.DataFrame): DataFrame com os tempos de volta dos pilotos.
+        modelo_cor (dict): Dicionário com as cores associadas a cada montadora.
+        multiplicador_outlier (float): Fator de multiplicação para definir o limite do outlier.
+
+    Retorno:
+        go.Figure: Gráfico box plot gerado com Plotly.
+    """
+    # Converte os tempos de volta para segundos, caso não tenha sido feito
+    if 'Lap_seconds' not in df.columns:
+        df['Lap_seconds'] = df['Lap Tm'].apply(convert_time_to_seconds)
+
+    # Verifica se há valores NaN e os descarta
+    df = df.dropna(subset=['Lap_seconds'])
+
+    # Calcula o melhor tempo por montadora
+    melhores = df.groupby('Montadora')['Lap_seconds'].min()
+    limites = melhores * multiplicador_outlier
+
+    # Filtra os dados, removendo os outliers
+    filtrado = df[df.apply(lambda x: x['Lap_seconds'] <=
+                           limites.get(x['Montadora'], float('inf')), axis=1)]
+
+    # Cria o boxplot
+    fig = px.box(
+        filtrado,
+        x='Piloto',
+        y='Lap_seconds',  # Usando a coluna 'Lap_seconds' no eixo Y
+        title="Box Plot - Laptimes por Piloto",
+        color='Montadora',
+        color_discrete_map=modelo_cor,
+        labels={'Lap_seconds': 'Tempo de Volta (s)', 'Piloto': 'Piloto'}
+    )
+
+    fig.update_layout(
+        title=dict(text="Box Plot - Laptimes por Piloto",
+                   font=dict(size=24), x=0.5, xanchor='center'),
+        xaxis_title="Piloto",
+        yaxis_title="Tempo de Volta (s)",
+        showlegend=True,
+        height=600
+    )
+
+    return fig
+
+
+def gerar_boxplot_laptimes_sem_cor(df: pd.DataFrame, multiplicador_outlier: float):
+    """Gera o boxplot dos laptimes dos pilotos, com filtragem interativa de outliers, sem coloração por montadora.
+
+    Argumentos:
+        df (pd.DataFrame): DataFrame com os tempos de volta dos pilotos.
+        multiplicador_outlier (float): Fator de multiplicação para definir o limite do outlier.
+
+    Retorno:
+        go.Figure: Gráfico box plot gerado com Plotly.
+    """
+    # Converte os tempos de volta para segundos, caso não tenha sido feito
+    if 'Lap_seconds' not in df.columns:
+        df['Lap_seconds'] = df['Lap Tm'].apply(convert_time_to_seconds)
+
+    # Verifica se há valores NaN e os descarta
+    df = df.dropna(subset=['Lap_seconds'])
+
+    # Calcula o melhor tempo por montadora
+    melhores = df.groupby('Montadora')['Lap_seconds'].min()
+    limites = melhores * multiplicador_outlier
+
+    # Filtra os dados, removendo os outliers
+    filtrado = df[df.apply(lambda x: x['Lap_seconds'] <=
+                           limites.get(x['Montadora'], float('inf')), axis=1)]
+
+    # Cria o boxplot sem coloração por montadora
+    fig = px.box(
+        filtrado,
+        x='Piloto',
+        y='Lap_seconds',  # Usando a coluna 'Lap_seconds' no eixo Y
+        title="Box Plot - Laptimes por Piloto (Sem Cor por Montadora)",
+        labels={'Lap_seconds': 'Tempo de Volta (s)', 'Piloto': 'Piloto'}
+    )
+
+    fig.update_layout(
+        title=dict(text="Box Plot - Laptimes por Piloto (Sem Cor)",
+                   font=dict(size=24), x=0.5, xanchor='center'),
+        xaxis_title="Piloto",
+        yaxis_title="Tempo de Volta (s)",
+        showlegend=False,
+        height=600
     )
 
     return fig
