@@ -3,14 +3,14 @@ import streamlit as st
 import plotly.express as px
 from PIL import Image
 import re
-from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia
+from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo
 import plotly.graph_objects as go
 
 # Configurando o título da página URL
 st.set_page_config(
     page_title="AMM Timing",
-    page_icon="🏁",
+    page_icon="⏱️",
     layout="wide",
     initial_sidebar_state="expanded")
 
@@ -445,3 +445,108 @@ if uploaded_file is not None:
                 else:
                     st.warning(
                         f'O piloto {reference_pilot} não possui dados suficientes para análise.')
+
+            with tabs[4]:
+                # Processa o DataFrame para análise GAP x Speed
+                cleaned_df = processar_gap_st(df)
+
+                # Interface Streamlit
+                pilotos = cleaned_df['Piloto'].unique().tolist()
+                pilotos.insert(0, "")  # Adiciona opção vazia
+                selected_pilot = st.selectbox('Selecione um piloto:', pilotos)
+
+                if selected_pilot:
+                    pilot_data = cleaned_df[cleaned_df['Piloto']
+                                            == selected_pilot]
+                    filtered_data = pilot_data[pilot_data['ST_next'] > 200]
+
+                    fig_gap_speed = gerar_grafico_gap_vs_st(
+                        filtered_data, selected_pilot)
+                    st.plotly_chart(fig_gap_speed)
+
+                    fig_gap_lap = gerar_grafico_gap_vs_volta(
+                        filtered_data, selected_pilot)
+                    st.plotly_chart(fig_gap_lap)
+                else:
+                    st.warning('Por favor, selecione um piloto.')
+
+            with tabs[5]:
+                st.header("🏁 Ranking por Volta")
+
+                # df_completo já deve estar carregado com 'Piloto', 'Lap', 'Lap_seconds'
+                ranked_df = gerar_ranking_por_volta(df_completo)
+
+                # Slider para selecionar a volta
+                selected_lap = st.slider(
+                    "Selecione a volta:",
+                    int(ranked_df['Lap'].min()),
+                    int(ranked_df['Lap'].max()),
+                    step=1
+                )
+
+                # Pilotos do time para destacar
+                team_pilots = ['21 - Thiago Camilo', '30 - Cesar Ramos']
+
+                # Dados da volta selecionada
+                lap_data = ranked_df[ranked_df['Lap'] == selected_lap].copy()
+                lap_data['Destaque'] = lap_data['Piloto'].apply(
+                    lambda x: 'Time' if x in team_pilots else 'Outro'
+                )
+
+                best_time = lap_data['Lap_seconds'].min()
+                min_y_value = best_time * 0.98
+
+                # Gráfico de barras
+                fig_bar = px.bar(
+                    lap_data,
+                    x='Piloto',
+                    y='Lap_seconds',
+                    text='Rank',
+                    title=f'Ranking da Volta {selected_lap}',
+                    labels={'Piloto': 'Piloto',
+                            'Lap_seconds': 'Tempo de Volta (s)'}
+                )
+
+                fig_bar.update_traces(
+                    texttemplate='%{text}',
+                    textposition='outside',
+                    marker=dict(
+                        color=lap_data['Destaque'].apply(
+                            lambda x: 'rgba(255, 0, 0, 0.8)' if x == 'Time' else 'rgba(31, 119, 180, 0.7)'
+                        )
+                    )
+                )
+
+                fig_bar.update_layout(
+                    title_x=0.4,
+                    xaxis_tickangle=-45,
+                    yaxis=dict(range=[min_y_value, None]),
+                    showlegend=False
+                )
+
+                st.plotly_chart(fig_bar)
+
+                st.write(f"📋 Tabela de Ranking da Volta {selected_lap}")
+                st.dataframe(lap_data[['Piloto', 'Lap_seconds', 'Rank']].rename(
+                    columns={'Lap_seconds': 'Tempo (s)'}))
+
+                # Histórico de ranking do piloto selecionado
+                selected_pilot = st.selectbox(
+                    "Selecione o piloto para ver histórico de ranking:", ranked_df['Piloto'].unique())
+
+                piloto_data = ranked_df[ranked_df['Piloto'] == selected_pilot]
+
+                fig_line = px.line(
+                    piloto_data,
+                    x='Lap',
+                    y='Rank',
+                    markers=True,
+                    title=f'Histórico de Ranking - {selected_pilot}',
+                    labels={'Lap': 'Volta', 'Rank': 'Ranking'}
+                )
+
+                fig_line.update_layout(
+                    title_x=0.38
+                )
+
+                st.plotly_chart(fig_line)

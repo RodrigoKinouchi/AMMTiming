@@ -872,3 +872,23 @@ def gerar_grafico_gap_para_piloto_referencia(df_completo: pd.DataFrame, piloto_m
 
     # Retorna a função para o gráfico e a lista de pilotos
     return gerar_figura_para_piloto_referencia, pilotos
+
+
+def gerar_ranking_por_volta(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Gera o ranking por volta com base na coluna 'Lap_seconds'.
+
+    Args:
+        df (pd.DataFrame): DataFrame com colunas ['Piloto', 'Lap', 'Lap_seconds'].
+
+    Returns:
+        pd.DataFrame: Ranking por volta com colunas ['Piloto', 'Lap', 'Lap_seconds', 'Rank'].
+    """
+    rankings = []
+    for lap in sorted(df['Lap'].dropna().unique()):
+        lap_df = df[df['Lap'] == lap].copy()
+        lap_df = lap_df.sort_values(by='Lap_seconds')
+        lap_df['Rank'] = range(1, len(lap_df) + 1)
+        rankings.append(lap_df[['Piloto', 'Lap', 'Lap_seconds', 'Rank']])
+
+    return pd.concat(rankings, ignore_index=True)
