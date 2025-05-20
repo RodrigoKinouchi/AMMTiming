@@ -507,19 +507,17 @@ def calcular_st_maior_e_media(df: dict) -> pd.DataFrame:
     Calcula o maior ST e a média dos 5 maiores ST registrados para cada piloto.
 
     :param df: Dicionário contendo os dados dos pilotos, organizado por piloto.
-    :return: DataFrame com as colunas 'Maior ST' e 'Média dos 5 maiores ST'.
+    :return: DataFrame com as colunas 'Piloto', 'Maior ST' e 'Média dos 5 maiores ST'.
     """
     dados = []
 
     for piloto, info in df.items():
-        # Obtém os valores de ST do piloto
         st_values = info['ST'].dropna().values
 
         if len(st_values) > 0:
             maior_st = st_values.max()
-            # Média dos 5 maiores ST, ou a média de todos se houver menos de 5
-            media_top_5 = st_values[-5:].mean() if len(
-                st_values) >= 5 else st_values.mean()
+            top_5 = sorted(st_values, reverse=True)[:5]
+            media_top_5 = np.mean(top_5)
 
             dados.append({
                 'Piloto': piloto,
