@@ -3,7 +3,7 @@ import streamlit as st
 import plotly.express as px
 from PIL import Image
 import re
-from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral
+from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo
 import plotly.graph_objects as go
 
@@ -100,36 +100,70 @@ if uploaded_file is not None:
             st.dataframe(df_resultado, hide_index=True)
 
         with tabs[1]:
-            # Adicionar um botão de seleção para ordenar os pilotos
-            sort_order = st.radio(
-                "Ordenar por:", ('Resultado', 'Maior Velocidade'))
+            # Criação das colunas para ordenação e filtro de GAP
+            col1, col2, col3 = st.columns([6, 2, 1])
 
-            # Limpar os nomes dos pilotos diretamente no dicionário 'top_speed'
+            with col1:
+                sort_order = st.radio(
+                    "Ordenar por:", ('Resultado', 'Maior Velocidade'))
+
+            with col2:
+                is_filtrar_gap = st.checkbox(
+                    "Filtrar ST para GAP < x", value=False)
+
+            limite_gap = 0.0
+            if is_filtrar_gap:
+                limite_gap = st.number_input(
+                    "Digite o limite de GAP (em segundos):", min_value=0.0, value=1.0, step=0.1)
+
+            # Processa o DataFrame para incluir o GAP entre voltas
+            df_gap = processar_gap_st(df)
+
+            # Aplica o filtro de GAP se ativado
+            if is_filtrar_gap:
+                df_gap = filtrar_gap(df_gap, limite_gap)
+                st.caption(
+                    f"{len(df_gap)} voltas consideradas após remover STs com GAP ≤ {limite_gap:.1f}s")
+
+            # Separar pilotos normalmente usando o DataFrame bruto
+            driver_info = separar_pilotos_por_volta(df)
+
+            # Se o filtro estiver ativado, manter apenas as voltas cujos tempos estão em df_gap
+            if is_filtrar_gap:
+                # Criar novo driver_info apenas com voltas filtradas
+                driver_info_filtrado = {
+                    piloto: voltas[voltas['Lap'].isin(
+                        df_gap[df_gap['Piloto'] == piloto]['Lap'])]
+                    for piloto, voltas in driver_info.items()
+                    if piloto in df_gap['Piloto'].unique()
+                }
+            else:
+                driver_info_filtrado = driver_info
+
+            # Calcula as maiores velocidades com os dados filtrados
+            top_speed = maior_velocidade_por_piloto(driver_info_filtrado)
+
+            # Limpa os nomes dos pilotos
             pilotos_limpos = {re.sub(r' - Stock Car Pro( Rookie|)', '', piloto): velocidade
                               for piloto, velocidade in top_speed.items()}
 
-            # Extrair os pilotos e suas respectivas velocidades máximas
             pilotos = list(pilotos_limpos.keys())
             velocidades_max = list(pilotos_limpos.values())
 
-            # Ordenar os dados de acordo com a escolha do usuário
+            # Ordena os dados conforme seleção
             if sort_order == 'Maior Velocidade':
-                # Ordenar do maior para o menor pela velocidade
                 sorted_pilotos = sorted(
                     zip(pilotos, velocidades_max), key=lambda x: x[1], reverse=True)
             else:
-                # Se a opção for "Resultado", ordenamos com base no índice do piloto,
-                # que já está por ordem de tempo (do mais rápido para o mais lento)
                 sorted_pilotos = zip(pilotos, velocidades_max)
 
-            # Reaplicar os dados ordenados
             pilotos, velocidades_max = zip(*sorted_pilotos)
 
-            # Ajustar escala do eixo Y
+            # Escala eixo Y
             y_max = max(velocidades_max) * 1.01
             y_min = y_max - 15
 
-            # Obter cores com base na equipe de cada piloto
+            # Cores por equipe
             cores = []
             legendas = []
             for piloto in pilotos:
@@ -138,18 +172,12 @@ if uploaded_file is not None:
                 cores.append(cor)
                 legendas.append(equipe)
 
-            # Armazenar barras únicas por equipe (para evitar repetição na legenda)
-            barras_adicionadas = set()
-
-            # Criar figura
+            # Gráfico por equipe
             fig = go.Figure()
-
-            # Adicionar uma barra por piloto
+            barras_adicionadas = set()
             for piloto, velocidade, equipe, cor in zip(pilotos, velocidades_max, legendas, cores):
-                # Adiciona legenda apenas uma vez por equipe
                 show_legend = equipe not in barras_adicionadas
                 barras_adicionadas.add(equipe)
-
                 fig.add_trace(go.Bar(
                     x=[piloto],
                     y=[velocidade],
@@ -159,7 +187,6 @@ if uploaded_file is not None:
                     showlegend=show_legend
                 ))
 
-            # Atualizar layout
             fig.update_layout(
                 title="<b>Top speed</b><br><span style='font-size:12px; color:gray;'>Clique e arraste o eixo Y para alterar a escala</span>",
                 title_x=0.4,
@@ -170,11 +197,9 @@ if uploaded_file is not None:
                 barmode='group',
                 legend_title_text='Equipe'
             )
-
-            # Exibir gráfico no Streamlit
             st.plotly_chart(fig)
 
-            # Obter cores e modelos
+            # Gráfico por modelo de carro
             cores_modelo = []
             modelos_carro = []
             for piloto in pilotos:
@@ -183,17 +208,11 @@ if uploaded_file is not None:
                 cores_modelo.append(cor)
                 modelos_carro.append(modelo)
 
-            # Armazenar barras únicas por modelo
-            barras_adicionadas_modelo = set()
-
-            # Criar figura
             fig_modelo = go.Figure()
-
-            # Adicionar uma barra por piloto, com legenda única por modelo
+            barras_adicionadas_modelo = set()
             for piloto, velocidade, modelo, cor in zip(pilotos, velocidades_max, modelos_carro, cores_modelo):
                 show_legend = modelo not in barras_adicionadas_modelo
                 barras_adicionadas_modelo.add(modelo)
-
                 fig_modelo.add_trace(go.Bar(
                     x=[piloto],
                     y=[velocidade],
@@ -203,19 +222,16 @@ if uploaded_file is not None:
                     showlegend=show_legend
                 ))
 
-            # Atualizar layout
             fig_modelo.update_layout(
                 title="<b>Top speed por marca</b><br><span style='font-size:12px; color:gray;'>Clique e arraste o eixo Y para alterar a escala</span>",
+                title_x=0.4,
                 xaxis_title='Piloto',
                 yaxis_title='Velocidade Máxima (km/h)',
                 yaxis=dict(range=[y_min, y_max]),
                 height=600,
                 barmode='group',
-                legend_title_text='Marca',
-                title_x=0.4
+                legend_title_text='Marca'
             )
-
-            # Exibir no Streamlit
             st.plotly_chart(fig_modelo)
 
             # Obter os dados de ST por piloto (todos os tempos registrados, não só o maior)

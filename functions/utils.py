@@ -963,3 +963,10 @@ def criar_matriz_velocidades_numeral(driver_info: dict) -> pd.DataFrame:
     df_velocidades = df_velocidades[sorted(df_velocidades.columns)]
 
     return df_velocidades
+
+
+def filtrar_gap(df, limite_gap):
+    """Filtra os dados para mostrar apenas os pilotos com GAP menor que o limite especificado."""
+    # Filtra os dados com base no limite de GAP
+    df_filtrado = df[df['GAP'] > limite_gap]
+    return df_filtrado
