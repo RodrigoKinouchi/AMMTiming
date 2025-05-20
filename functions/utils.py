@@ -667,7 +667,7 @@ def gerar_relatorio_completo_speed_report(df_st, df_matriz_st, fig_box, fig_maio
         pdf.set_font("Arial", size=10)
         for idx, row in df_st.iterrows():
             pdf.cell(
-                0, 8, f"{row['Piloto']}: Maior ST = {row['Maior ST']:.1f}, Média Top 5 ST = {row['Média Top 5 ST']:.1f}", ln=True)
+                0, 8, f"{row['Piloto']}: Maior ST = {row['Maior ST']:.1f}, Média Top 5 ST = {row['Média dos 5 maiores ST']:.1f}", ln=True)
 
         pdf.ln(10)
         pdf.set_font("Arial", "B", 12)
