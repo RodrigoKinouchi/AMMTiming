@@ -561,6 +561,7 @@ def plotar_maior_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
     fig.update_layout(
         title='Maior ST Registrado para Cada Piloto',
         xaxis_title='Piloto',
+        title_x=0.41,
         yaxis_title='ST (km/h)',
         yaxis=dict(
             range=[y_min, y_max]  # Define a escala do eixo Y
@@ -568,7 +569,17 @@ def plotar_maior_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
         height=500,
         xaxis_tickangle=-45,
         showlegend=False,
-        margin=dict(t=40, b=100, l=60, r=40)
+        margin=dict(t=40, b=100, l=60, r=40),
+        annotations=[  # Adicionando a anotação
+            dict(
+                text="Clique e arraste o eixo Y para alterar a escala",
+                xref="paper", yref="paper",
+                x=0.5, y=1.05,
+                showarrow=False,
+                font=dict(size=12, color="gray"),
+                align="center"
+            )
+        ]
     )
 
     return fig
@@ -611,6 +622,7 @@ def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
     fig.update_layout(
         title='Média dos 5 Maiores ST Registrados para Cada Piloto',
         xaxis_title='Piloto',
+        title_x=0.38,
         yaxis_title='ST (km/h)',
         yaxis=dict(
             range=[y_min, y_max]  # Define a escala do eixo Y
@@ -618,7 +630,17 @@ def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
         height=500,
         xaxis_tickangle=-45,
         showlegend=False,
-        margin=dict(t=40, b=100, l=60, r=40)
+        margin=dict(t=40, b=100, l=60, r=40),
+        annotations=[  # Adicionando a anotação
+            dict(
+                text="Clique e arraste o eixo Y para alterar a escala",
+                xref="paper", yref="paper",
+                x=0.5, y=1.05,
+                showarrow=False,
+                font=dict(size=12, color="gray"),
+                align="center"
+            )
+        ]
     )
 
     return fig

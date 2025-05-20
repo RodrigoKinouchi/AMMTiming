@@ -456,11 +456,11 @@ if uploaded_file is not None:
 
             # Exibir as opções de gráfico: com ou sem cor por montadora
             escolha_grafico = st.radio(
-                "Escolha o tipo de gráfico:",
-                ('Com Cor por Montadora', 'Sem Cor por Montadora')
+                "Defina como o gráfico será colorido:",
+                ('Montadora', 'Colocação')
             )
 
-            if escolha_grafico == 'Com Cor por Montadora':
+            if escolha_grafico == 'Montadora':
                 st.plotly_chart(fig_laptimes_com_cor, use_container_width=True)
             else:
                 st.plotly_chart(fig_laptimes_sem_cor, use_container_width=True)
@@ -578,7 +578,7 @@ if uploaded_file is not None:
 
                 st.write(f"📋 Tabela de Ranking da Volta {selected_lap}")
                 st.dataframe(lap_data[['Piloto', 'Lap_seconds', 'Rank']].rename(
-                    columns={'Lap_seconds': 'Tempo (s)'}))
+                    columns={'Lap_seconds': 'Tempo (s)'}), hide_index=True)
 
                 # Histórico de ranking do piloto selecionado
                 selected_pilot = st.selectbox(
