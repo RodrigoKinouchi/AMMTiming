@@ -3,7 +3,7 @@ import streamlit as st
 import plotly.express as px
 from PIL import Image
 import re
-from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta
+from functions.utils import separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo
 import plotly.graph_objects as go
 
@@ -14,6 +14,54 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded")
 
+# Carrega e converte imagem do carro
+carro_b64 = imagem_base64("images/carro.png")
+
+# === CSS das faixas e do carro ===
+st.markdown(f"""
+    <style>
+    /* Container com as faixas e imagem */
+    .decoration-container {{
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        width: 300px;
+        height: 300px;
+        z-index: 0;  /* IMPORTANTE: manter baixo */
+        pointer-events: none; /* permite clique nos elementos do app */
+    }}
+
+    .faixas {{
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg,
+            #0047BA 0%,
+            #0047BA 33%,
+            #FF6600 33%,
+            #FF6600 66%,
+            #FFCC00 66%,
+            #FFCC00 100%);
+        clip-path: polygon(100% 100%, 0% 100%, 100% 0%);
+        opacity: 0.5;
+    }}
+
+    .carro-img {{
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 240px;
+        opacity: 0.95;
+    }}
+    </style>
+
+    <div class="decoration-container">
+        <div class="faixas"></div>
+        <img src="data:image/png;base64,{carro_b64}" class="carro-img">
+    </div>
+""", unsafe_allow_html=True)
 # Carregando uma imagem
 image = Image.open('images/capa.png')
 
@@ -455,13 +503,15 @@ if uploaded_file is not None:
                 pilotos.insert(0, "")  # Adiciona opção vazia
                 selected_pilot = st.selectbox('Selecione um piloto:', pilotos)
 
+                show_trend = st.checkbox("Mostrar linha de tendência")
+
                 if selected_pilot:
                     pilot_data = cleaned_df[cleaned_df['Piloto']
                                             == selected_pilot]
                     filtered_data = pilot_data[pilot_data['ST_next'] > 200]
 
                     fig_gap_speed = gerar_grafico_gap_vs_st(
-                        filtered_data, selected_pilot)
+                        filtered_data, selected_pilot, show_trend=show_trend)
                     st.plotly_chart(fig_gap_speed)
 
                     fig_gap_lap = gerar_grafico_gap_vs_volta(

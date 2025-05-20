@@ -11,6 +11,9 @@ import os
 import tempfile
 import plotly.io as pio
 import numpy as np
+import base64
+from io import BytesIO
+from PIL import Image
 
 
 def separar_pilotos_por_volta(df):
@@ -271,14 +274,34 @@ def processar_gap_st(df):
     return cleaned_df
 
 
-def gerar_grafico_gap_vs_st(filtered_data, piloto):
-    fig = go.Figure(data=go.Scatter(
+def gerar_grafico_gap_vs_st(filtered_data, piloto, show_trend=False):
+    fig = go.Figure()
+
+    # Scatter dos dados
+    fig.add_trace(go.Scatter(
         x=filtered_data['GAP'],
         y=filtered_data['ST_next'],
         mode='markers',
         marker=dict(size=10, opacity=0.7, line=dict(
-            width=1, color='DarkSlateGrey'))
+            width=1, color='DarkSlateGrey')),
+        name='Dados'
     ))
+
+    # Adiciona trend line se checkbox estiver marcado
+    if show_trend and not filtered_data.empty:
+        # Regressão linear simples
+        x = filtered_data['GAP']
+        y = filtered_data['ST_next']
+        coeffs = np.polyfit(x, y, 1)
+        trend_y = np.polyval(coeffs, x)
+
+        fig.add_trace(go.Scatter(
+            x=x,
+            y=trend_y,
+            mode='lines',
+            name='Trend Line',
+            line=dict(color='red', width=2, dash='dash')
+        ))
 
     fig.update_layout(
         title='GAP x Velocidade',
@@ -295,7 +318,7 @@ def gerar_grafico_gap_vs_st(filtered_data, piloto):
                 align="center"
             )
         ],
-        title_font=dict(size=24)  # Definindo o tamanho do título aqui
+        title_font=dict(size=24)
     )
     return fig
 
@@ -314,16 +337,6 @@ def gerar_grafico_gap_vs_volta(filtered_data, piloto):
         title_x=0.45,
         xaxis_title='Número da Volta',
         yaxis_title='GAP (s)',
-        annotations=[
-            dict(
-                text=f"{piloto} | Apenas voltas com velocidade ST > 200 km/h",
-                xref="paper", yref="paper",
-                x=0.5, y=1.08,
-                showarrow=False,
-                font=dict(size=12, color="gray"),
-                align="center"
-            )
-        ],
         title_font=dict(size=24)  # Definindo o tamanho do título aqui
     )
     return fig
@@ -892,3 +905,11 @@ def gerar_ranking_por_volta(df: pd.DataFrame) -> pd.DataFrame:
         rankings.append(lap_df[['Piloto', 'Lap', 'Lap_seconds', 'Rank']])
 
     return pd.concat(rankings, ignore_index=True)
+
+
+def imagem_base64(imagem_path):
+    img = Image.open(imagem_path)
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    img_b64 = base64.b64encode(buffer.getvalue()).decode()
+    return img_b64
