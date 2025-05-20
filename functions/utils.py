@@ -933,3 +933,33 @@ def imagem_base64(imagem_path):
     img.save(buffer, format="PNG")
     img_b64 = base64.b64encode(buffer.getvalue()).decode()
     return img_b64
+
+
+def criar_matriz_velocidades_numeral(driver_info: dict) -> pd.DataFrame:
+    """
+    Cria um DataFrame onde cada coluna representa um piloto,
+    e cada linha representa uma velocidade ST, ordenadas do maior para o menor.
+    Os cabeçalhos das colunas terão apenas o numeral do piloto.
+    """
+    colunas = []
+
+    for piloto, df in driver_info.items():
+        if 'ST' in df.columns:
+            st_sorted = df['ST'].dropna().astype(float).sort_values(
+                ascending=False).reset_index(drop=True)
+
+            # Extrai apenas o número do piloto (antes do ' - ')
+            try:
+                numeral = int(piloto.split(' - ')[0])
+            except:
+                numeral = piloto  # fallback, em caso de formato inesperado
+
+            colunas.append(st_sorted.rename(numeral))
+
+    # Junta todas as colunas em um DataFrame, alinhando por índice
+    df_velocidades = pd.concat(colunas, axis=1)
+
+    # Ordena as colunas pelo número do carro
+    df_velocidades = df_velocidades[sorted(df_velocidades.columns)]
+
+    return df_velocidades
