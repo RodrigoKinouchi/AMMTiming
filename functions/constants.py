@@ -83,9 +83,9 @@ equipes_pilotos = {
 }
 
 modelo_cor = {
-    'Toyota': 'grey',
-    'Mitsubishi': 'red',
-    'Chevrolet': 'orange'
+    'Toyota': 'red',
+    'Mitsubishi': 'grey',
+    'Chevrolet': 'blue'
 }
 
 piloto_modelo = {
