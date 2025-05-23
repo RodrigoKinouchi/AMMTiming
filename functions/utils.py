@@ -257,6 +257,9 @@ def processar_gap_st(df):
     # Ordenar e calcular GAP
     cleaned_df = cleaned_df.sort_values(
         by='Time of Day').reset_index(drop=True)
+    # cleaned_df['GAP'] = cleaned_df['Time of Day'].diff().dt.total_seconds()
+    cleaned_df['Time of Day'] = pd.to_datetime(
+        cleaned_df['Time of Day'], errors='coerce')
     cleaned_df['GAP'] = cleaned_df['Time of Day'].diff().dt.total_seconds()
 
     # Sinalizar velocidade da próxima volta
