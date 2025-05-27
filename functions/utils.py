@@ -240,53 +240,70 @@ def processar_gap_st(df):
     """
     Processa o DataFrame bruto para gerar um novo com colunas:
     Piloto, Time of Day, ST, GAP, ST_next, Lap
+
+    GAP: diferença em segundos para o piloto imediatamente mais rápido na mesma volta.
     """
+
     results = []
     current_pilot = None
 
-    # Itera sobre as linhas
+    # Extrair linhas com dados válidos (tempo e ST) e piloto
     for index, row in df.iterrows():
-        if "Stock" in row[0]:  # Nome do piloto na coluna 'Time of Day'
+        if isinstance(row[0], str) and "Stock" in row[0]:
             current_pilot = row[0]
-        elif isinstance(row[0], str) and ':' in row[0]:  # Se for um tempo válido
+        elif isinstance(row[0], str) and ':' in row[0]:
             try:
-                time = pd.to_timedelta(row[0])
-                st_value = row[6]  # Corrigido para coluna 6
-                results.append((current_pilot, time, st_value))
+                time_str = row[0]
+                st_value = row[6]  # índice da coluna ST na linha
+                lap = row[1]       # número da volta
+
+                results.append((current_pilot, time_str, st_value, lap))
             except Exception:
                 continue
 
     # Criar DataFrame limpo
-    cleaned_df = pd.DataFrame(results, columns=['Piloto', 'Time of Day', 'ST'])
+    cleaned_df = pd.DataFrame(
+        results, columns=['Piloto', 'Time of Day', 'ST', 'Lap'])
 
     # Limpar nome do piloto
-    cleaned_df['Piloto'] = cleaned_df['Piloto'].str.replace(
-        ' - Stock Car PRO 2024', '', regex=False
-    ).str.replace(
-        ' - Stock Car Pro Rookie', '', regex=False
-    ).str.replace(
-        ' - Stock Car Pro', '', regex=False
-    ).str.strip().str.title()
+    cleaned_df['Piloto'] = (
+        cleaned_df['Piloto']
+        .str.replace(' - Stock Car PRO 2024', '', regex=False)
+        .str.replace(' - Stock Car Pro Rookie', '', regex=False)
+        .str.replace(' - Stock Car Pro', '', regex=False)
+        .str.strip()
+        .str.title()
+    )
 
-    # Ordenar e calcular GAP
-    cleaned_df = cleaned_df.sort_values(
-        by='Time of Day').reset_index(drop=True)
-    # cleaned_df['GAP'] = cleaned_df['Time of Day'].diff().dt.total_seconds()
+    # Converter 'Time of Day' para datetime
     cleaned_df['Time of Day'] = pd.to_datetime(
         cleaned_df['Time of Day'], errors='coerce')
-    cleaned_df['GAP'] = cleaned_df['Time of Day'].diff().dt.total_seconds()
 
-    # Sinalizar velocidade da próxima volta
-    cleaned_df['ST_next'] = cleaned_df['ST'].shift(-1)
+    # Remover linhas inválidas
+    cleaned_df = cleaned_df.dropna(subset=['Time of Day'])
 
-    # Remover última linha (sem ST_next)
-    cleaned_df.dropna(subset=['ST_next'], inplace=True)
+    # Ordenar por volta e tempo para calcular GAP entre pilotos na mesma volta
+    cleaned_df = cleaned_df.sort_values(
+        ['Lap', 'Time of Day']).reset_index(drop=True)
 
-    # GAP inicial como zero
-    cleaned_df['GAP'].fillna(0, inplace=True)
+    # Calcular GAP: diferença para o piloto anterior na mesma volta
+    # Usamos groupby em 'Lap' e ordenamos por 'Time of Day'
+    cleaned_df['GAP'] = cleaned_df.groupby(
+        'Lap')['Time of Day'].diff().dt.total_seconds()
 
-    # Número da volta
-    cleaned_df['Lap'] = cleaned_df.groupby('Piloto').cumcount() + 1
+    # Preencher GAP da primeira posição de cada volta com zero
+    cleaned_df['GAP'] = cleaned_df['GAP'].fillna(0)
+
+    # Agora ordenar por piloto e tempo para calcular ST_next (velocidade próxima volta)
+    cleaned_df = cleaned_df.sort_values(
+        ['Piloto', 'Lap']).reset_index(drop=True)
+    cleaned_df['ST_next'] = cleaned_df.groupby('Piloto')['ST'].shift(-1)
+
+    # Remover última volta que não tem ST_next
+    cleaned_df = cleaned_df.dropna(subset=['ST_next']).reset_index(drop=True)
+
+    # Número da volta já está na coluna 'Lap', mas pode garantir sequencial para cada piloto
+    cleaned_df['Lap'] = cleaned_df['Lap'].astype(int)
 
     return cleaned_df
 
