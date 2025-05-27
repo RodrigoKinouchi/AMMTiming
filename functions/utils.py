@@ -16,6 +16,20 @@ from io import BytesIO
 from PIL import Image
 
 
+def normalizar_coluna_velocidade(df):
+    """
+    Renomeia a coluna 'SPT' para 'ST' se necessário, mantendo compatibilidade com o restante do código.
+    """
+    colunas = [col.strip().upper() for col in df.columns]
+    if 'SPT' in colunas:
+        original_name = df.columns[colunas.index('SPT')]
+        df.rename(columns={original_name: 'ST'}, inplace=True)
+    elif 'ST' not in colunas:
+        raise ValueError(
+            "Coluna de velocidade final ('ST' ou 'SPT') não encontrada no CSV.")
+    return df
+
+
 def separar_pilotos_por_volta(df):
     """Separa os dados por piloto, com base na linha que contém 'Stock' no Time of Day."""
     driver_info = {}
