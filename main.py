@@ -115,7 +115,7 @@ if uploaded_file is not None:
 
             with col2:
                 is_filtrar_gap = st.checkbox(
-                    "Filtrar ST para GAP < x", value=False)
+                    "Filtrar ST para GAP > x", value=False)
 
             limite_gap = 0.0
             if is_filtrar_gap:
@@ -431,48 +431,64 @@ if uploaded_file is not None:
         with tabs[1]:
             st.subheader("Speed Report - Matriz de Velocidades (ST)")
 
-            # Criando a matriz
-            df_matriz_st = criar_matriz_velocidades(driver_info)
+            # Checkbox e input para filtro GAP
+            is_filtrar_gap = st.checkbox(
+                "Filtrar ST para GAP > x", value=False)
+            limite_gap = 0.0
+            if is_filtrar_gap:
+                limite_gap = st.number_input(
+                    "Digite o limite de GAP (em segundos):", min_value=0.0, value=1.0, step=0.1)
 
-            # Cria 3 colunas: vazia, vazia, checkbox à direita
-            col1, col2, col3 = st.columns([6, 1, 1])
+            # Processar GAP
+            df_gap = processar_gap_st(df)
 
-            with col3:
-                mostrar_numerais = st.checkbox(
-                    "Somente numerais", value=False)
+            # Filtrar dados se checkbox ativado
+            if is_filtrar_gap:
+                df_gap = filtrar_gap(df_gap, limite_gap)
+                st.caption(
+                    f"{len(df_gap)} voltas consideradas após remover STs com GAP ≤ {limite_gap:.1f}s")
 
-            # Criando a matriz conforme escolha
-            if mostrar_numerais:
-                df_matriz_st = criar_matriz_velocidades_numeral(driver_info)
+            # Separar pilotos com base no dataframe bruto
+            driver_info = separar_pilotos_por_volta(df)
+
+            # Criar versão filtrada dos dados por piloto, se filtro ativo
+            if is_filtrar_gap:
+                driver_info_filtrado = {
+                    piloto: voltas[voltas['Lap'].isin(
+                        df_gap[df_gap['Piloto'] == piloto]['Lap'])]
+                    for piloto, voltas in driver_info.items()
+                    if piloto in df_gap['Piloto'].unique()
+                }
             else:
-                df_matriz_st = criar_matriz_velocidades(driver_info)
+                driver_info_filtrado = driver_info
 
-            # Aplicando a formatação condicional
+            # Checkbox para mostrar só numerais
+            col1, col2, col3 = st.columns([6, 1, 1])
+            with col3:
+                mostrar_numerais = st.checkbox("Somente numerais", value=False)
+
+            # Criar matriz ST filtrada conforme checkbox
+            if mostrar_numerais:
+                df_matriz_st = criar_matriz_velocidades_numeral(
+                    driver_info_filtrado)
+            else:
+                df_matriz_st = criar_matriz_velocidades(driver_info_filtrado)
+
+            # Formatar e exibir matriz
             df_st_formatado = formatar_st_com_cores_interativo(df_matriz_st)
-
-            # Exibindo o DataFrame estilizado
             st.dataframe(df_st_formatado,
                          use_container_width=False, hide_index=True)
 
-            # 1. Processa os dados
-            df_boxplot = preparar_dados_boxplot(driver_info, piloto_modelo)
-
-            # 2. Cria o gráfico
+            # Dados para boxplot e gráficos, usando dados filtrados
+            df_boxplot = preparar_dados_boxplot(
+                driver_info_filtrado, piloto_modelo)
             fig_box = gerar_boxplot_st(df_boxplot)
-
-            # 3. Mostra no Streamlit
             st.plotly_chart(fig_box, use_container_width=True)
 
-            # Calcular o maior ST e a média dos 5 maiores ST
-            df_st = calcular_st_maior_e_media(driver_info)
-
-            # Gerar o gráfico para o maior ST
+            df_st = calcular_st_maior_e_media(driver_info_filtrado)
             fig_maior_st = plotar_maior_st(df_st, modelo_cor)
-
-            # Gerar o gráfico para a média dos 5 maiores ST
             fig_media_top_5_st = plotar_media_top_5_st(df_st, modelo_cor)
 
-            # Exibir os gráficos no Streamlit (se estiver usando Streamlit)
             st.plotly_chart(fig_maior_st)
             st.plotly_chart(fig_media_top_5_st)
 
