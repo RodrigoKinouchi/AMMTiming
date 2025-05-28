@@ -6,6 +6,7 @@ import re
 from functions.utils import normalizar_coluna_velocidade, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo
 import plotly.graph_objects as go
+import io
 
 # Configurando o título da página URL
 st.set_page_config(
@@ -478,6 +479,21 @@ if uploaded_file is not None:
             df_st_formatado = formatar_st_com_cores_interativo(df_matriz_st)
             st.dataframe(df_st_formatado,
                          use_container_width=False, hide_index=True)
+
+            excel_buffer = io.BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+                df_matriz_st.to_excel(writer, index=True,
+                                      sheet_name='Matriz ST')
+
+            excel_buffer.seek(0)  # Volta ao início do arquivo em memória
+            excel_data = excel_buffer.read()
+
+            st.download_button(
+                label="📥 Baixar Matriz ST em Excel",
+                data=excel_data,
+                file_name='matriz_st.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
 
             # Dados para boxplot e gráficos, usando dados filtrados
             df_boxplot = preparar_dados_boxplot(
