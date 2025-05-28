@@ -84,3 +84,4 @@ watchdog==6.0.0
 wcwidth==0.2.13
 kaleido>=0.2.1
 fpdf==1.7.2
+xlsxwriter
