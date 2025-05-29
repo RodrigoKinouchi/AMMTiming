@@ -3,7 +3,7 @@ import streamlit as st
 import plotly.express as px
 from PIL import Image
 import re
-from functions.utils import normalizar_coluna_velocidade, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap
+from functions.utils import normalizar_coluna_velocidade, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap, plotar_raising_average_st, calcular_raising_average_st
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo
 import plotly.graph_objects as go
 import io
@@ -507,6 +507,27 @@ if uploaded_file is not None:
 
             st.plotly_chart(fig_maior_st)
             st.plotly_chart(fig_media_top_5_st)
+
+            # Raising Average ST
+            # Opção de coloração
+            modo_coloracao = st.radio(
+                "Colorir linhas por:",
+                ["Montadora", "Piloto"],
+                index=0,
+                horizontal=True
+            )
+
+            # Cálculo e plotagem do gráfico
+            dict_raising = calcular_raising_average_st(driver_info_filtrado)
+            fig_raising = plotar_raising_average_st(
+                dict_raising,
+                piloto_modelo,
+                modelo_cor,
+                colorir_por=modo_coloracao.lower(),
+                pilotos_cor=pilotos_cor  # Aqui está o novo argumento!
+            )
+
+            st.plotly_chart(fig_raising, use_container_width=True)
 
             if st.button("📄 Gerar relatório em PDF"):
                 caminho_pdf = gerar_relatorio_completo_speed_report(

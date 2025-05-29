@@ -1004,3 +1004,71 @@ def filtrar_gap(df, limite_gap):
     # Filtra os dados com base no limite de GAP
     df_filtrado = df[df['GAP'] > limite_gap]
     return df_filtrado
+
+
+def calcular_raising_average_st(driver_info: dict) -> dict:
+    """
+    Calcula o raising average de ST (Speed Trap) para cada piloto.
+
+    :param driver_info: Dicionário com os dados de cada piloto.
+    :return: Dicionário com piloto como chave e lista de médias progressivas como valor.
+    """
+    resultado = {}
+
+    for piloto, df in driver_info.items():
+        st_vals = pd.to_numeric(df['ST'], errors='coerce').dropna()
+        if len(st_vals) == 0:
+            continue
+        st_ordenado = st_vals.sort_values(
+            ascending=False).reset_index(drop=True)
+        medias = [st_ordenado[:i].mean() for i in range(1, len(st_ordenado)+1)]
+        resultado[piloto] = medias
+
+    return resultado
+
+
+def plotar_raising_average_st(
+    raising_dict: dict,
+    piloto_modelo: dict,
+    modelo_cor: dict,
+    colorir_por: str = "montadora",
+    pilotos_cor: dict = None
+) -> go.Figure:
+    """
+    Plota o gráfico de raising average de ST para todos os pilotos.
+
+    :param raising_dict: Dicionário {piloto: lista de médias}.
+    :param piloto_modelo: Dicionário com modelo de carro por piloto.
+    :param modelo_cor: Dicionário com cores por modelo de carro.
+    :param colorir_por: 'montadora' ou 'piloto'.
+    :param pilotos_cor: Dicionário com cores por piloto.
+    :return: Gráfico Plotly.
+    """
+    fig = go.Figure()
+
+    for piloto, medias in raising_dict.items():
+        if colorir_por == "montadora":
+            modelo = piloto_modelo.get(piloto, "Desconhecido")
+            cor = modelo_cor.get(modelo, 'gray')
+        else:
+            cor = pilotos_cor.get(piloto, 'gray') if pilotos_cor else 'gray'
+
+        fig.add_trace(go.Scatter(
+            x=list(range(1, len(medias)+1)),
+            y=medias,
+            mode='lines+markers',
+            name=piloto,
+            line=dict(color=cor),
+            hovertemplate=f'Voltas: %{{x}}<br>Média ST: %{{y:.1f}}<extra>{piloto}</extra>'
+        ))
+
+    fig.update_layout(
+        title='Raising Average de ST por Piloto',
+        title_x=0.4,
+        yaxis_title='Média das X Maiores Velocidades (km/h)',
+        height=600,
+        legend=dict(title='Piloto'),
+        margin=dict(t=50, b=80, l=60, r=60)
+    )
+
+    return fig
