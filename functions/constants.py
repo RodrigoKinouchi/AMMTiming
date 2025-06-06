@@ -108,7 +108,7 @@ piloto_modelo = {
     '6 - Helio Castroneves': 'Chevrolet',
     '51 - Atila Abreu': 'Chevrolet',
     '81 - Arthur Leist': 'Toyota',
-    '38 - Zezinho Mugiatti': 'Toyota',
+    '38 - Zezinho Muggiati': 'Toyota',
     '444 - Vicente Orige': 'Mitsubishi',
     '18 - Allam Khodair': 'Mitsubishi',
     '73 - Enzo Elias': 'Chevrolet',
