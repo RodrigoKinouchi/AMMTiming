@@ -1,5 +1,5 @@
 import pandas as pd
-from functions.constants import piloto_modelo, modelo_cor
+from functions.constants import piloto_modelo, modelo_cor, pilotos_cor_amattheis
 import plotly.express as px
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
@@ -562,12 +562,13 @@ def calcular_st_maior_e_media(df: dict) -> pd.DataFrame:
     return pd.DataFrame(dados)
 
 
-def plotar_maior_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
+def plotar_maior_st(df: pd.DataFrame, modelo_cor: dict, esquema_cores: str = 'Montadora') -> go.Figure:
     """
-    Cria o gráfico de barras para o maior ST registrado de cada piloto, colorido por montadora.
+    Cria o gráfico de barras para o maior ST registrado de cada piloto, colorido por montadora ou padrão Amattheis.
 
     :param df: DataFrame com as colunas 'Piloto' e 'Maior ST'.
     :param modelo_cor: Dicionário de cores por montadora.
+    :param esquema_cores: Esquema de cores ('Montadora' ou 'Padrão Amattheis').
     :return: Gráfico de barras.
     """
     # Ordena os dados do maior para o menor
@@ -579,13 +580,21 @@ def plotar_maior_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
 
     fig = go.Figure()
 
+    # Determinar cores conforme o esquema selecionado
+    if esquema_cores == 'Padrão Amattheis':
+        # Padrão Amattheis: todos em silver, exceto os pilotos Amattheis destacados
+        cores = [pilotos_cor_amattheis.get(piloto, 'silver') for piloto in df['Piloto']]
+    else:
+        # Padrão: cores por montadora
+        cores = [modelo_cor.get(modelo, 'gray') for modelo in df['Piloto'].apply(
+            lambda x: piloto_modelo.get(x, 'Desconhecido'))]
+
     # Adicionar barra para o maior ST
     fig.add_trace(go.Bar(
         x=df['Piloto'],
         y=df['Maior ST'],
         name='Maior ST',
-        marker_color=[modelo_cor.get(modelo, 'gray') for modelo in df['Piloto'].apply(
-            lambda x: piloto_modelo.get(x, 'Desconhecido'))],
+        marker_color=cores,
         text=df['Maior ST'],
         hoverinfo='text',
         width=0.7
@@ -619,12 +628,13 @@ def plotar_maior_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
     return fig
 
 
-def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
+def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict, esquema_cores: str = 'Montadora') -> go.Figure:
     """
-    Cria o gráfico de barras para a média dos 5 maiores ST registrados de cada piloto, colorido por montadora.
+    Cria o gráfico de barras para a média dos 5 maiores ST registrados de cada piloto, colorido por montadora ou padrão Amattheis.
 
     :param df: DataFrame com as colunas 'Piloto' e 'Média dos 5 maiores ST'.
     :param modelo_cor: Dicionário de cores por montadora.
+    :param esquema_cores: Esquema de cores ('Montadora' ou 'Padrão Amattheis').
     :return: Gráfico de barras.
     """
     # Arredondar a média dos 5 maiores ST para 1 casa decimal
@@ -640,13 +650,21 @@ def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict) -> go.Figure:
 
     fig = go.Figure()
 
+    # Determinar cores conforme o esquema selecionado
+    if esquema_cores == 'Padrão Amattheis':
+        # Padrão Amattheis: todos em silver, exceto os pilotos Amattheis destacados
+        cores = [pilotos_cor_amattheis.get(piloto, 'silver') for piloto in df['Piloto']]
+    else:
+        # Padrão: cores por montadora
+        cores = [modelo_cor.get(modelo, 'gray') for modelo in df['Piloto'].apply(
+            lambda x: piloto_modelo.get(x, 'Desconhecido'))]
+
     # Adicionar barra para a média dos 5 maiores ST
     fig.add_trace(go.Bar(
         x=df['Piloto'],
         y=df['Média dos 5 maiores ST'],
         name='Média dos 5 Maiores ST',
-        marker_color=[modelo_cor.get(modelo, 'gray') for modelo in df['Piloto'].apply(
-            lambda x: piloto_modelo.get(x, 'Desconhecido'))],
+        marker_color=cores,
         text=df['Média dos 5 maiores ST'],
         hoverinfo='text',
         width=0.7
@@ -1040,17 +1058,20 @@ def plotar_raising_average_st(
     :param raising_dict: Dicionário {piloto: lista de médias}.
     :param piloto_modelo: Dicionário com modelo de carro por piloto.
     :param modelo_cor: Dicionário com cores por modelo de carro.
-    :param colorir_por: 'montadora' ou 'piloto'.
+    :param colorir_por: 'padrão amattheis', 'montadora' ou 'piloto'.
     :param pilotos_cor: Dicionário com cores por piloto.
     :return: Gráfico Plotly.
     """
     fig = go.Figure()
 
     for piloto, medias in raising_dict.items():
-        if colorir_por == "montadora":
+        if colorir_por == "padrão amattheis":
+            # Padrão Amattheis: todos em silver, exceto os pilotos Amattheis destacados
+            cor = pilotos_cor_amattheis.get(piloto, 'silver')
+        elif colorir_por == "montadora":
             modelo = piloto_modelo.get(piloto, "Desconhecido")
             cor = modelo_cor.get(modelo, 'gray')
-        else:
+        else:  # "piloto"
             cor = pilotos_cor.get(piloto, 'gray') if pilotos_cor else 'gray'
 
         fig.add_trace(go.Scatter(

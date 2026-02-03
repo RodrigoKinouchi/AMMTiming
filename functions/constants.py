@@ -39,7 +39,7 @@ pilotos_cor_amattheis = {
     '9 - Arthur Gama': 'silver',
     '10 - Ricardo Zonta': 'silver',
     '11 - Gaetano Di Mauro': 'silver',
-    '12 - Lucas Foresti': 'grey',
+    '12 - Lucas Foresti': 'dimgrey',
     '18 - Allam Khodair': 'silver',
     '19 - Felipe Massa': 'silver',
     '21 - Thiago Camilo': 'red',
@@ -58,7 +58,7 @@ pilotos_cor_amattheis = {
     '95 - Lucas Kohl': 'silver',
     '101 - Gianluca Petecof': 'silver',
     '111 - Rubens Barrichello': 'silver',
-    '121 - Felipe Baptista': 'navy'
+    '121 - Felipe Baptista': 'silver'
 }
 
 equipes_cor = {

@@ -4,7 +4,7 @@ import plotly.express as px
 from PIL import Image
 import re
 from functions.utils import normalizar_coluna_velocidade, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap, plotar_raising_average_st, calcular_raising_average_st
-from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo
+from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo, pilotos_cor_amattheis
 import plotly.graph_objects as go
 import io
 
@@ -170,29 +170,75 @@ if uploaded_file is not None:
             y_max = max(velocidades_max) * 1.01
             y_min = y_max - 15
 
-            # Cores por equipe
+            # Seletor de esquema de cores (Padrão Amattheis pré-selecionado)
+            esquema_cores = st.radio(
+                "Esquema de cores:",
+                ('Equipe', 'Padrão Amattheis'),
+                index=1,  # Padrão Amattheis pré-selecionado
+                horizontal=True
+            )
+
+            # Cores conforme o esquema selecionado
             cores = []
             legendas = []
-            for piloto in pilotos:
-                equipe = equipes_pilotos.get(piloto)
-                cor = equipes_cor.get(equipe, 'gray')
-                cores.append(cor)
-                legendas.append(equipe)
+            
+            if esquema_cores == 'Equipe':
+                # Cores por equipe (comportamento original)
+                for piloto in pilotos:
+                    equipe = equipes_pilotos.get(piloto)
+                    cor = equipes_cor.get(equipe, 'gray')
+                    cores.append(cor)
+                    legendas.append(equipe)
+            else:
+                # Padrão Amattheis: todos em silver, exceto os pilotos Amattheis destacados
+                # Lista dos pilotos Amattheis que devem ser destacados
+                pilotos_amattheis = ['6 - Helio Castroneves', '12 - Lucas Foresti', 
+                                    '21 - Thiago Camilo', '30 - Cesar Ramos', 
+                                    '83 - Gabriel Casagrande']
+                
+                for piloto in pilotos:
+                    # Tenta encontrar a cor no dicionário pilotos_cor_amattheis
+                    # Usa get() com fallback para 'silver' se não encontrar
+                    cor = pilotos_cor_amattheis.get(piloto, 'silver')
+                    cores.append(cor)
+                    # Para o padrão Amattheis, usa o nome do piloto se for Amattheis, senão "Outros"
+                    if piloto in pilotos_amattheis and cor != 'silver':
+                        legendas.append(piloto)  # Nome do piloto individual
+                    else:
+                        legendas.append('Outros')
 
-            # Gráfico por equipe
+            # Gráfico
             fig = go.Figure()
             barras_adicionadas = set()
-            for piloto, velocidade, equipe, cor in zip(pilotos, velocidades_max, legendas, cores):
-                show_legend = equipe not in barras_adicionadas
-                barras_adicionadas.add(equipe)
-                fig.add_trace(go.Bar(
-                    x=[piloto],
-                    y=[velocidade],
-                    name=equipe if show_legend else None,
-                    marker_color=cor,
-                    width=[0.6],
-                    showlegend=show_legend
-                ))
+            
+            if esquema_cores == 'Equipe':
+                # Comportamento original: agrupar por equipe na legenda
+                for piloto, velocidade, equipe, cor in zip(pilotos, velocidades_max, legendas, cores):
+                    show_legend = equipe not in barras_adicionadas
+                    barras_adicionadas.add(equipe)
+                    fig.add_trace(go.Bar(
+                        x=[piloto],
+                        y=[velocidade],
+                        name=equipe if show_legend else None,
+                        marker_color=cor,
+                        width=[0.6],
+                        showlegend=show_legend
+                    ))
+                legend_title = 'Equipe'
+            else:
+                # Padrão Amattheis: cada piloto Amattheis individualmente, outros agrupados
+                for piloto, velocidade, legenda, cor in zip(pilotos, velocidades_max, legendas, cores):
+                    show_legend = legenda not in barras_adicionadas
+                    barras_adicionadas.add(legenda)
+                    fig.add_trace(go.Bar(
+                        x=[piloto],
+                        y=[velocidade],
+                        name=legenda if show_legend else None,
+                        marker_color=cor,
+                        width=[0.6],
+                        showlegend=show_legend
+                    ))
+                legend_title = 'Pilotos'
 
             fig.update_layout(
                 title="<b>Top speed</b><br><span style='font-size:12px; color:gray;'>Clique e arraste o eixo Y para alterar a escala</span>",
@@ -202,7 +248,7 @@ if uploaded_file is not None:
                 yaxis=dict(range=[y_min, y_max]),
                 height=600,
                 barmode='group',
-                legend_title_text='Equipe'
+                legend_title_text=legend_title
             )
             st.plotly_chart(fig)
 
@@ -502,8 +548,17 @@ if uploaded_file is not None:
             st.plotly_chart(fig_box, use_container_width=True)
 
             df_st = calcular_st_maior_e_media(driver_info_filtrado)
-            fig_maior_st = plotar_maior_st(df_st, modelo_cor)
-            fig_media_top_5_st = plotar_media_top_5_st(df_st, modelo_cor)
+            
+            # Seletor de esquema de cores (Padrão Amattheis pré-selecionado)
+            esquema_cores_st = st.radio(
+                "Esquema de cores:",
+                ('Padrão Amattheis', 'Montadora'),
+                index=0,  # Padrão Amattheis pré-selecionado
+                horizontal=True
+            )
+            
+            fig_maior_st = plotar_maior_st(df_st, modelo_cor, esquema_cores_st)
+            fig_media_top_5_st = plotar_media_top_5_st(df_st, modelo_cor, esquema_cores_st)
 
             st.plotly_chart(fig_maior_st)
             st.plotly_chart(fig_media_top_5_st)
@@ -512,8 +567,8 @@ if uploaded_file is not None:
             # Opção de coloração
             modo_coloracao = st.radio(
                 "Colorir linhas por:",
-                ["Montadora", "Piloto"],
-                index=0,
+                ["Padrão Amattheis", "Montadora", "Piloto"],
+                index=0,  # Padrão Amattheis pré-selecionado
                 horizontal=True
             )
 
@@ -524,7 +579,7 @@ if uploaded_file is not None:
                 piloto_modelo,
                 modelo_cor,
                 colorir_por=modo_coloracao.lower(),
-                pilotos_cor=pilotos_cor  # Aqui está o novo argumento!
+                pilotos_cor=pilotos_cor  # Para modo "piloto"
             )
 
             st.plotly_chart(fig_raising, use_container_width=True)
