@@ -5,6 +5,7 @@ from PIL import Image
 import re
 from functions.utils import normalizar_coluna_velocidade, validar_csv, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap, plotar_raising_average_st, calcular_raising_average_st
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo, pilotos_cor_amattheis
+from functions.database import salvar_sessao, listar_sessoes, buscar_sessao_por_id, excluir_sessao, obter_estatisticas
 import plotly.graph_objects as go
 import io
 
@@ -70,11 +71,207 @@ image = Image.open('images/capa.png')
 st.image(image, use_container_width=True)
 st.write("")
 
-opcao = st.radio("Selecione uma opção:", ("Corrida", "Treino"))
+# Menu principal: Nova Sessão ou Consultar Sessões
+# Usar session_state para manter o modo quando uma sessão é carregada
+if 'modo_app' not in st.session_state:
+    st.session_state['modo_app'] = "📊 Nova Sessão"
 
-uploaded_file = st.file_uploader("Escolha um arquivo CSV", type="csv")
+modo_app = st.radio(
+    "Escolha o modo:",
+    ("📊 Nova Sessão", "🗄️ Consultar Sessões Salvas"),
+    horizontal=True,
+    index=0 if st.session_state['modo_app'] == "📊 Nova Sessão" else 1,
+    key="modo_app_radio"
+)
 
-if uploaded_file is not None:
+# Atualizar session_state quando o usuário muda o modo manualmente
+if modo_app != st.session_state.get('modo_app'):
+    st.session_state['modo_app'] = modo_app
+    # Limpar sessão carregada se mudar de modo manualmente
+    if 'sessao_carregada' in st.session_state:
+        st.session_state.pop('sessao_carregada', None)
+        st.session_state.pop('modo_visualizacao', None)
+
+if modo_app == "🗄️ Consultar Sessões Salvas":
+    # ========== MODO CONSULTA ==========
+    st.header("🗄️ Consultar Sessões Salvas")
+    
+    # Se houver sessão carregada, mostrar aviso e botão para visualizar
+    if 'sessao_carregada' in st.session_state and st.session_state.get('modo_visualizacao', False):
+        sessao = st.session_state['sessao_carregada']
+        st.success(f"✅ Sessão carregada: **{sessao.get('evento', 'Sem evento')}** | {sessao.get('data', 'Sem data')} | {sessao.get('circuito', 'Sem circuito')}")
+        col_btn1, col_btn2 = st.columns([1, 4])
+        with col_btn1:
+            if st.button("👁️ Visualizar Dados da Sessão", type="primary"):
+                st.session_state['modo_app'] = "📊 Nova Sessão"
+                st.rerun()
+        with col_btn2:
+            if st.button("🔄 Limpar Sessão Carregada"):
+                st.session_state.pop('sessao_carregada', None)
+                st.session_state.pop('modo_visualizacao', None)
+                st.rerun()
+        st.markdown("---")
+    
+    # Estatísticas
+    stats = obter_estatisticas()
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total de Sessões", stats['total_sessoes'])
+    with col2:
+        st.metric("Eventos Únicos", stats['eventos_unicos'])
+    with col3:
+        st.metric("Circuitos Únicos", stats['circuitos_unicos'])
+    with col4:
+        treino_count = stats['sessoes_por_tipo'].get('Treino', 0)
+        corrida_count = stats['sessoes_por_tipo'].get('Corrida', 0)
+        st.metric("Treino/Corrida", f"{treino_count}/{corrida_count}")
+    
+    st.markdown("---")
+    
+    # Filtros
+    st.subheader("🔍 Filtros de Busca")
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+    
+    with col_f1:
+        filtro_evento = st.text_input("Evento", placeholder="Ex: Stock Car 2024")
+    with col_f2:
+        filtro_ano = st.text_input("Ano", placeholder="Ex: 2024")
+    with col_f3:
+        filtro_circuito = st.text_input("Circuito", placeholder="Ex: Interlagos")
+    with col_f4:
+        filtro_tipo = st.selectbox("Tipo", ["Todos", "Treino", "Corrida"])
+    
+    # Buscar sessões
+    tipo_filtro = None if filtro_tipo == "Todos" else filtro_tipo
+    sessoes_df = listar_sessoes(
+        filtro_evento=filtro_evento if filtro_evento else None,
+        filtro_ano=filtro_ano if filtro_ano else None,
+        filtro_circuito=filtro_circuito if filtro_circuito else None,
+        filtro_tipo=tipo_filtro
+    )
+    
+    if sessoes_df.empty:
+        st.info("📭 Nenhuma sessão encontrada com os filtros aplicados.")
+    else:
+        st.subheader(f"📋 Sessões Encontradas ({len(sessoes_df)})")
+        
+        # Exibir tabela de sessões
+        sessoes_display = sessoes_df[['id', 'evento', 'data', 'circuito', 'tipo_sessao', 'tipo_opcao', 'data_criacao']].copy()
+        sessoes_display.columns = ['ID', 'Evento', 'Data', 'Circuito', 'Sessão', 'Tipo', 'Data Criação']
+        sessoes_display['Data Criação'] = pd.to_datetime(sessoes_display['Data Criação']).dt.strftime('%d/%m/%Y %H:%M')
+        
+        st.dataframe(sessoes_display, use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        st.subheader("👁️ Visualizar Sessão")
+        
+        # Seleção de sessão
+        sessoes_ids = sessoes_df['id'].tolist()
+        sessoes_labels = [
+            f"ID {row['id']} - {row['evento'] or 'Sem evento'} | {row['data'] or 'Sem data'} | {row['circuito'] or 'Sem circuito'}"
+            for _, row in sessoes_df.iterrows()
+        ]
+        
+        sessao_selecionada_idx = st.selectbox(
+            "Selecione uma sessão para visualizar:",
+            range(len(sessoes_ids)),
+            format_func=lambda x: sessoes_labels[x]
+        )
+        
+        if st.button("🔍 Carregar e Visualizar Sessão", type="primary"):
+            sessao_id = sessoes_ids[sessao_selecionada_idx]
+            sessao = buscar_sessao_por_id(sessao_id)
+            
+            if sessao:
+                st.session_state['sessao_carregada'] = sessao
+                st.session_state['modo_visualizacao'] = True
+                # Mudar automaticamente para o modo "Nova Sessão" para visualizar os dados
+                st.session_state['modo_app'] = "📊 Nova Sessão"
+                st.success(f"✅ Sessão ID {sessao_id} carregada! Redirecionando para visualização...")
+                st.rerun()
+        
+        st.markdown("---")
+        st.subheader("🗑️ Excluir Sessão")
+        
+        sessao_excluir_idx = st.selectbox(
+            "Selecione uma sessão para excluir:",
+            range(len(sessoes_ids)),
+            format_func=lambda x: sessoes_labels[x],
+            key="excluir_select"
+        )
+        
+        if st.button("🗑️ Excluir Sessão", type="primary"):
+            sessao_id = sessoes_ids[sessao_excluir_idx]
+            sessao_info = sessoes_df[sessoes_df['id'] == sessao_id].iloc[0]
+            
+            if excluir_sessao(sessao_id):
+                st.success(f"✅ Sessão ID {sessao_id} excluída com sucesso!")
+                st.rerun()
+            else:
+                st.error("❌ Erro ao excluir sessão.")
+
+else:
+    # ========== MODO NOVA SESSÃO ==========
+    opcao = st.radio("Selecione uma opção:", ("Corrida", "Treino"))
+
+    uploaded_file = st.file_uploader("Escolha um arquivo CSV", type="csv")
+
+# Verificar se há sessão carregada ou arquivo novo
+tem_dados = False
+
+# Se estiver no modo consulta E não houver sessão carregada, não processar dados
+if modo_app == "🗄️ Consultar Sessões Salvas" and not ('sessao_carregada' in st.session_state and st.session_state.get('modo_visualizacao', False)):
+    # Modo consulta - não processar dados aqui, apenas exibir interface de consulta
+    pass
+elif 'sessao_carregada' in st.session_state and st.session_state.get('modo_visualizacao', False):
+    # Sessão carregada do banco de dados
+    tem_dados = True
+    sessao = st.session_state['sessao_carregada']
+    dados_processados = sessao.get('dados_processados', {})
+    
+    # Recriar objetos necessários
+    if 'df_original' in dados_processados:
+        df = dados_processados['df_original']
+        if not isinstance(df, pd.DataFrame):
+            st.error("❌ Erro ao carregar dados da sessão. Formato inválido.")
+            st.stop()
+    else:
+        st.error("❌ Dados originais não encontrados na sessão.")
+        st.stop()
+    
+    if 'driver_info' in dados_processados:
+        driver_info = dados_processados['driver_info']
+        if isinstance(driver_info, dict):
+            # Reconstruir driver_info
+            driver_info_reconstruido = {}
+            for key, value in driver_info.items():
+                if isinstance(value, pd.DataFrame):
+                    driver_info_reconstruido[key] = value
+                elif isinstance(value, list):
+                    driver_info_reconstruido[key] = pd.DataFrame(value)
+                else:
+                    driver_info_reconstruido[key] = value
+            driver_info = driver_info_reconstruido
+        else:
+            driver_info = separar_pilotos_por_volta(df)
+    else:
+        driver_info = separar_pilotos_por_volta(df)
+    
+    top_speed = maior_velocidade_por_piloto(driver_info)
+    opcao = sessao.get('tipo_opcao', opcao)
+    
+    # Mostrar informações da sessão
+    st.info(f"📂 Sessão carregada: **{sessao.get('evento', 'Sem evento')}** | {sessao.get('data', 'Sem data')} | {sessao.get('circuito', 'Sem circuito')}")
+    
+    col_voltar1, col_voltar2 = st.columns([1, 4])
+    with col_voltar1:
+        if st.button("🔄 Voltar para Nova Sessão"):
+            st.session_state.pop('sessao_carregada', None)
+            st.session_state.pop('modo_visualizacao', None)
+            st.rerun()
+elif modo_app == "📊 Nova Sessão" and uploaded_file is not None:
+    # Arquivo novo carregado
+    tem_dados = True
     try:
         # Leitura do arquivo CSV
         df = pd.read_csv(uploaded_file)
@@ -122,7 +319,58 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"❌ Erro ao processar dados dos pilotos: {e}")
         st.stop()
+    
+    # Seção para salvar sessão (apenas se não estiver em modo visualização)
+    if 'sessao_carregada' not in st.session_state or not st.session_state.get('modo_visualizacao', False):
+        st.markdown("---")
+        st.subheader("💾 Salvar Sessão")
+        
+        col_save1, col_save2 = st.columns(2)
+        with col_save1:
+            evento_save = st.text_input("Evento", key="save_evento", placeholder="Ex: S26E01")
+            data_save = st.text_input("Data", key="save_data", placeholder="Ex: 15/03/2024")
+        with col_save2:
+            circuito_save = st.text_input("Circuito", key="save_circuito", placeholder="Ex: Interlagos")
+            tipo_sessao_save = st.text_input("Sessão", key="save_tipo_sessao", placeholder="Ex: Treino Livre 1")
+        
+        observacoes_save = st.text_area("Observações (opcional)", key="save_observacoes", placeholder="Informações adicionais...")
+        
+        if st.button("💾 Salvar Sessão no Banco de Dados"):
+            if not evento_save or not data_save or not circuito_save or not tipo_sessao_save:
+                st.warning("⚠️ Preencha pelo menos Evento, Data, Circuito e Sessão para salvar.")
+            else:
+                try:
+                    # Preparar dados para salvar
+                    dados_para_salvar = {
+                        'df_original': df,  # DataFrame original processado
+                        'driver_info': driver_info,  # Dicionário de DataFrames por piloto
+                    }
+                    
+                    # Adicionar dados específicos conforme o tipo
+                    if opcao == "Treino":
+                        dados_para_salvar['df_resultado'] = processar_resultado_csv(df)
+                    else:  # Corrida
+                        df_resultado_corrida = montar_dataframe_resultado_corrida(driver_info, equipes_pilotos)
+                        dados_para_salvar['df_resultado_corrida'] = df_resultado_corrida
+                    
+                    # Salvar no banco
+                    sessao_id = salvar_sessao(
+                        evento=evento_save,
+                        data=data_save,
+                        circuito=circuito_save,
+                        tipo_sessao=tipo_sessao_save,
+                        observacoes=observacoes_save,
+                        tipo_opcao=opcao,
+                        nome_arquivo_csv=uploaded_file.name if uploaded_file else "desconhecido.csv",
+                        dados_processados=dados_para_salvar
+                    )
+                    st.success(f"✅ Sessão salva com sucesso! ID: {sessao_id}")
+                except Exception as e:
+                    st.error(f"❌ Erro ao salvar sessão: {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
 
+if tem_dados:
     if opcao == "Treino":
 
         tabs = st.tabs(
@@ -483,7 +731,7 @@ if uploaded_file is not None:
             else:
                 st.warning('Por favor, selecione um piloto.')
 
-    if opcao == "Corrida":
+    elif opcao == "Corrida":
 
         tabs = st.tabs(['Resultado', 'Speed Report', 'Laptimes', 'Gap Analysis',
                         'Speed x GAP', 'Ranking by lap'])
@@ -623,12 +871,12 @@ if uploaded_file is not None:
             col_info1, col_info2 = st.columns(2)
             
             with col_info1:
-                evento = st.text_input("Evento", placeholder="Ex: Stock Car Pro Series 2024")
+                evento = st.text_input("Evento", placeholder="Ex: S26E01")
                 data = st.text_input("Data", placeholder="Ex: 15/03/2024")
             
             with col_info2:
                 circuito = st.text_input("Circuito", placeholder="Ex: Interlagos")
-                tipo_sessao = st.text_input("Tipo de Sessão", placeholder="Ex: Treino Livre 1")
+                tipo_sessao = st.text_input("Sessão", placeholder="Ex: Treino Livre 1")
             
             observacoes = st.text_area("Observações (opcional)", placeholder="Informações adicionais sobre a sessão...", height=100)
             

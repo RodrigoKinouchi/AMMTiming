@@ -3,10 +3,25 @@ venv/
 
 # Ignorar arquivos Python compilados
 *.pyc
-_pycache_/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Ignorar arquivos de log
 *.log
 
 # Ignorar arquivos de backup
 *.bak
+
+# Ignorar banco de dados SQLite (será criado automaticamente)
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignorar PDFs gerados
+*.pdf
+
+# Ignorar arquivos temporários
+*.tmp
+*.temp
