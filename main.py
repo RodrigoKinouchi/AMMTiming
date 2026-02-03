@@ -3,7 +3,7 @@ import streamlit as st
 import plotly.express as px
 from PIL import Image
 import re
-from functions.utils import normalizar_coluna_velocidade, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap, plotar_raising_average_st, calcular_raising_average_st
+from functions.utils import normalizar_coluna_velocidade, validar_csv, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap, plotar_raising_average_st, calcular_raising_average_st
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo, pilotos_cor_amattheis
 import plotly.graph_objects as go
 import io
@@ -80,19 +80,48 @@ if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
 
     except Exception as e:
-        st.error(f"Ocorreu um erro ao processar o arquivo: {e}")
+        st.error(f"❌ Erro ao ler o arquivo CSV: {e}")
+        st.info("Verifique se o arquivo é um CSV válido e tente novamente.")
+        st.stop()
+
+    # Validação robusta do CSV
+    is_valid, error_message = validar_csv(df)
+    if not is_valid:
+        st.error(f"❌ Erro na validação do CSV: {error_message}")
+        st.info("O arquivo CSV deve conter as seguintes colunas: 'Time of Day', 'Lap', 'Lap Tm', 'S1 Tm', 'S2 Tm', 'S3 Tm', e 'ST' ou 'SPT'.")
+        st.stop()
 
     try:
         df = normalizar_coluna_velocidade(df)
     except ValueError as e:
-        st.error(str(e))
+        st.error(f"❌ Erro ao normalizar coluna de velocidade: {e}")
         st.stop()
 
-    df = df[['Time of Day', 'Lap', 'Lap Tm', 'S1 Tm', 'S2 Tm', 'S3 Tm', 'ST']]
-    # Trocando virgula por ponto e transformando os tempos de volta em float
-    df['ST'] = df['ST'].str.replace(',', '.').astype(float)
-    driver_info = separar_pilotos_por_volta(df)
-    top_speed = maior_velocidade_por_piloto(driver_info)
+    # Verificar se todas as colunas necessárias existem após normalização
+    colunas_necessarias = ['Time of Day', 'Lap', 'Lap Tm', 'S1 Tm', 'S2 Tm', 'S3 Tm', 'ST']
+    colunas_faltando = [col for col in colunas_necessarias if col not in df.columns]
+    if colunas_faltando:
+        st.error(f"❌ Colunas não encontradas após processamento: {', '.join(colunas_faltando)}")
+        st.stop()
+
+    try:
+        df = df[colunas_necessarias]
+        # Trocando virgula por ponto e transformando os tempos de volta em float
+        df['ST'] = df['ST'].astype(str).str.replace(',', '.').astype(float)
+    except (ValueError, KeyError) as e:
+        st.error(f"❌ Erro ao processar dados: {e}")
+        st.info("Verifique se os dados nas colunas estão no formato correto.")
+        st.stop()
+
+    try:
+        driver_info = separar_pilotos_por_volta(df)
+        if not driver_info:
+            st.warning("⚠️ Nenhum piloto foi encontrado nos dados. Verifique o formato do arquivo CSV.")
+            st.stop()
+        top_speed = maior_velocidade_por_piloto(driver_info)
+    except Exception as e:
+        st.error(f"❌ Erro ao processar dados dos pilotos: {e}")
+        st.stop()
 
     if opcao == "Treino":
 
@@ -584,18 +613,72 @@ if uploaded_file is not None:
 
             st.plotly_chart(fig_raising, use_container_width=True)
 
+            st.markdown("---")
+            st.subheader("📄 Gerar Relatório em PDF")
+            
+            # Informações da sessão para a capa
+            st.markdown("### 📋 Informações da Sessão")
+            st.markdown("Preencha as informações abaixo para incluir na capa do relatório:")
+            
+            col_info1, col_info2 = st.columns(2)
+            
+            with col_info1:
+                evento = st.text_input("Evento", placeholder="Ex: Stock Car Pro Series 2024")
+                data = st.text_input("Data", placeholder="Ex: 15/03/2024")
+            
+            with col_info2:
+                circuito = st.text_input("Circuito", placeholder="Ex: Interlagos")
+                tipo_sessao = st.text_input("Tipo de Sessão", placeholder="Ex: Treino Livre 1")
+            
+            observacoes = st.text_area("Observações (opcional)", placeholder="Informações adicionais sobre a sessão...", height=100)
+            
+            # Criar dicionário com informações da sessão
+            info_sessao = {
+                'evento': evento,
+                'data': data,
+                'circuito': circuito,
+                'tipo_sessao': tipo_sessao,
+                'observacoes': observacoes
+            }
+            
+            st.markdown("---")
+            
+            # Seleção de gráficos a incluir
+            st.markdown("**Selecione quais elementos incluir no relatório:**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                incluir_resumo = st.checkbox("Resumo de ST por Piloto", value=True)
+                incluir_boxplot = st.checkbox("Boxplot por Montadora", value=True)
+            
+            with col2:
+                incluir_maior_st = st.checkbox("Gráfico Maior ST", value=True)
+                incluir_media_top5_st = st.checkbox("Gráfico Média Top 5 ST", value=True)
+            
+            # Verificar se pelo menos um elemento foi selecionado
+            if not any([incluir_resumo, incluir_boxplot, incluir_maior_st, incluir_media_top5_st]):
+                st.warning("⚠️ Selecione pelo menos um elemento para incluir no relatório.")
+            
             if st.button("📄 Gerar relatório em PDF"):
-                caminho_pdf = gerar_relatorio_completo_speed_report(
-                    df_st=df_st,
-                    df_matriz_st=df_matriz_st,
-                    fig_box=fig_box,
-                    fig_maior_st=fig_maior_st,
-                    fig_media_top_5_st=fig_media_top_5_st
-                )
-                st.success(f"Relatório gerado com sucesso: {caminho_pdf}")
-                with open(caminho_pdf, "rb") as f:
-                    st.download_button("📥 Baixar PDF", f,
-                                       file_name="relatorio_speed_report.pdf")
+                try:
+                    caminho_pdf = gerar_relatorio_completo_speed_report(
+                        df_st=df_st,
+                        df_matriz_st=df_matriz_st,
+                        fig_box=fig_box,
+                        fig_maior_st=fig_maior_st,
+                        fig_media_top_5_st=fig_media_top_5_st,
+                        incluir_resumo=incluir_resumo,
+                        incluir_boxplot=incluir_boxplot,
+                        incluir_maior_st=incluir_maior_st,
+                        incluir_media_top5_st=incluir_media_top5_st,
+                        info_sessao=info_sessao
+                    )
+                    st.success(f"✅ Relatório gerado com sucesso: {caminho_pdf}")
+                    with open(caminho_pdf, "rb") as f:
+                        st.download_button("📥 Baixar PDF", f,
+                                           file_name="relatorio_speed_report.pdf")
+                except Exception as e:
+                    st.error(f"❌ Erro ao gerar relatório: {e}")
 
         with tabs[2]:
             # Montar o dataframe completo com os tempos de volta

@@ -14,6 +14,52 @@ import numpy as np
 import base64
 from io import BytesIO
 from PIL import Image
+from typing import Tuple
+
+
+def validar_csv(df: pd.DataFrame) -> Tuple[bool, str]:
+    """
+    Valida se o CSV possui todas as colunas obrigatórias e dados válidos.
+    
+    :param df: DataFrame a ser validado
+    :return: Tupla (é_válido, mensagem_erro)
+    """
+    # Colunas obrigatórias esperadas
+    colunas_obrigatorias = ['Time of Day', 'Lap', 'Lap Tm', 'S1 Tm', 'S2 Tm', 'S3 Tm']
+    
+    # Verificar se o DataFrame está vazio
+    if df.empty:
+        return False, "O arquivo CSV está vazio. Verifique se o arquivo contém dados."
+    
+    # Verificar colunas obrigatórias
+    colunas_faltando = []
+    colunas_df = [col.strip() for col in df.columns]
+    
+    for col_obrigatoria in colunas_obrigatorias:
+        if col_obrigatoria not in colunas_df:
+            colunas_faltando.append(col_obrigatoria)
+    
+    if colunas_faltando:
+        return False, f"Colunas obrigatórias não encontradas: {', '.join(colunas_faltando)}. " \
+                     f"Colunas encontradas: {', '.join(colunas_df[:10])}" + \
+                     ("..." if len(colunas_df) > 10 else "")
+    
+    # Verificar se há coluna de velocidade (ST ou SPT)
+    colunas_upper = [col.strip().upper() for col in df.columns]
+    if 'ST' not in colunas_upper and 'SPT' not in colunas_upper:
+        return False, "Coluna de velocidade final ('ST' ou 'SPT') não encontrada no CSV."
+    
+    # Verificar se há dados válidos (não apenas cabeçalhos)
+    if len(df) == 0:
+        return False, "O arquivo CSV não contém dados, apenas cabeçalhos."
+    
+    # Verificar se há pelo menos alguns dados não nulos nas colunas principais
+    colunas_principais = ['Lap', 'Lap Tm']
+    for col in colunas_principais:
+        if col in df.columns and df[col].isna().all():
+            return False, f"A coluna '{col}' está completamente vazia."
+    
+    return True, ""
 
 
 def normalizar_coluna_velocidade(df):
@@ -698,61 +744,201 @@ def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict, esquema_cores: str
     return fig
 
 
-def gerar_relatorio_completo_speed_report(df_st, df_matriz_st, fig_box, fig_maior_st, fig_media_top_5_st,
-                                          nome_arquivo="relatorio_speed_report_completo.pdf"):
+def criar_capa_pdf(pdf: FPDF, info_sessao: dict):
     """
-    Gera um relatório PDF com título, tabela, e gráficos do Speed Report.
+    Cria a página de capa do relatório PDF com logos e informações da sessão.
+    
+    Args:
+        pdf: Objeto FPDF
+        info_sessao: Dicionário com informações da sessão (evento, data, circuito, etc.)
+    """
+    # Adicionar página de capa em modo paisagem
+    pdf.add_page(orientation='L')
+    
+    # Caminhos das imagens (relativos ao diretório de trabalho)
+    logo_equipe_path = "images/capa2.png"
+    logo_campeonato_path = "images/stocklogo.png"
+    
+    # Verificar se as imagens existem
+    logo_equipe_existe = os.path.exists(logo_equipe_path)
+    logo_campeonato_existe = os.path.exists(logo_campeonato_path)
+    
+    # Altura e largura da página em modo paisagem (297x210mm)
+    page_width = 297
+    page_height = 210
+    
+    # Espaçamento inicial
+    y_pos = 30
+    
+    # Logo da equipe (lado esquerdo)
+    if logo_equipe_existe:
+        try:
+            # Ajustar tamanho do logo da equipe
+            pdf.image(logo_equipe_path, x=20, y=y_pos, w=70, h=0)  # h=0 mantém proporção
+        except Exception:
+            pass
+    
+    # Logo do campeonato (lado direito)
+    if logo_campeonato_existe:
+        try:
+            pdf.image(logo_campeonato_path, x=page_width - 90, y=y_pos, w=60, h=0)
+        except Exception:
+            pass
+    
+    # Título principal (centralizado)
+    y_pos = 100
+    pdf.set_font("Arial", "B", 28)
+    pdf.set_xy(0, y_pos)
+    pdf.cell(page_width, 20, "SPEED REPORT", ln=True, align='C')
+    
+    # Linha separadora
+    y_pos = 125
+    pdf.set_line_width(0.5)
+    pdf.line(30, y_pos, page_width - 30, y_pos)
+    
+    # Informações da sessão
+    y_pos = 140
+    pdf.set_font("Arial", "B", 18)
+    pdf.set_xy(0, y_pos)
+    pdf.cell(page_width, 12, "Informações da Sessão", ln=True, align='C')
+    
+    y_pos = 160
+    pdf.set_font("Arial", "", 14)
+    
+    # Centralizar informações
+    x_start = 50
+    
+    # Evento
+    if info_sessao.get('evento'):
+        pdf.set_xy(x_start, y_pos)
+        pdf.cell(page_width - 2*x_start, 10, f"Evento: {info_sessao['evento']}", align='L')
+        y_pos += 12
+    
+    # Data
+    if info_sessao.get('data'):
+        pdf.set_xy(x_start, y_pos)
+        pdf.cell(page_width - 2*x_start, 10, f"Data: {info_sessao['data']}", align='L')
+        y_pos += 12
+    
+    # Circuito
+    if info_sessao.get('circuito'):
+        pdf.set_xy(x_start, y_pos)
+        pdf.cell(page_width - 2*x_start, 10, f"Circuito: {info_sessao['circuito']}", align='L')
+        y_pos += 12
+    
+    # Tipo de Sessão
+    if info_sessao.get('tipo_sessao'):
+        pdf.set_xy(x_start, y_pos)
+        pdf.cell(page_width - 2*x_start, 10, f"Tipo de Sessão: {info_sessao['tipo_sessao']}", align='L')
+        y_pos += 12
+    
+    # Observações
+    if info_sessao.get('observacoes'):
+        y_pos += 8
+        pdf.set_font("Arial", "I", 11)
+        pdf.set_xy(x_start, y_pos)
+        pdf.multi_cell(page_width - 2*x_start, 7, f"Observações: {info_sessao['observacoes']}", align='L')
+
+
+def gerar_relatorio_completo_speed_report(
+    df_st, 
+    df_matriz_st, 
+    fig_box=None, 
+    fig_maior_st=None, 
+    fig_media_top_5_st=None,
+    incluir_resumo=True,
+    incluir_boxplot=True,
+    incluir_maior_st=True,
+    incluir_media_top5_st=True,
+    info_sessao=None,
+    nome_arquivo="relatorio_speed_report_completo.pdf"
+):
+    """
+    Gera um relatório PDF personalizado com título, tabela, e gráficos selecionados do Speed Report.
 
     Args:
         df_st (pd.DataFrame): DataFrame com maior e média ST.
         df_matriz_st (pd.DataFrame): Matriz de ST.
-        fig_box: Boxplot gerado com Plotly.
-        fig_maior_st: Gráfico com maior ST.
-        fig_media_top_5_st: Gráfico com média das 5 maiores ST.
+        fig_box: Boxplot gerado com Plotly (opcional).
+        fig_maior_st: Gráfico com maior ST (opcional).
+        fig_media_top_5_st: Gráfico com média das 5 maiores ST (opcional).
+        incluir_resumo (bool): Se True, inclui resumo de ST por piloto.
+        incluir_boxplot (bool): Se True, inclui boxplot por montadora.
+        incluir_maior_st (bool): Se True, inclui gráfico de maior ST.
+        incluir_media_top5_st (bool): Se True, inclui gráfico de média das 5 maiores ST.
+        info_sessao (dict): Dicionário com informações da sessão para a capa.
         nome_arquivo (str): Nome do arquivo gerado (padrão: relatorio_speed_report_completo.pdf).
 
     Returns:
         str: Caminho do arquivo PDF gerado.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
-        box_path = os.path.join(temp_dir, "boxplot.png")
-        maior_path = os.path.join(temp_dir, "maior_st.png")
-        media_path = os.path.join(temp_dir, "media_top5_st.png")
+        # Preparar caminhos das imagens apenas para gráficos que serão incluídos
+        box_path = None
+        maior_path = None
+        media_path = None
+        
+        if incluir_boxplot and fig_box is not None:
+            box_path = os.path.join(temp_dir, "boxplot.png")
+            pio.write_image(fig_box, box_path, format='png', scale=2)
+        
+        if incluir_maior_st and fig_maior_st is not None:
+            maior_path = os.path.join(temp_dir, "maior_st.png")
+            pio.write_image(fig_maior_st, maior_path, format='png', scale=2)
+        
+        if incluir_media_top5_st and fig_media_top_5_st is not None:
+            media_path = os.path.join(temp_dir, "media_top5_st.png")
+            pio.write_image(fig_media_top_5_st, media_path, format='png', scale=2)
 
-        pio.write_image(fig_box, box_path, format='png', scale=2)
-        pio.write_image(fig_maior_st, maior_path, format='png', scale=2)
-        pio.write_image(fig_media_top_5_st, media_path, format='png', scale=2)
-
-        pdf = FPDF()
-        pdf.add_page()
+        # Inicializar PDF em modo paisagem
+        pdf = FPDF(orientation='L', unit='mm', format='A4')
+        
+        # Criar capa
+        if info_sessao:
+            criar_capa_pdf(pdf, info_sessao)
+        
+        # Página de conteúdo
+        pdf.add_page(orientation='L')
         pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, "Speed Report - Relatório Completo", ln=True, align='C')
+        pdf.cell(0, 10, "Speed Report - Relatório Personalizado", ln=True, align='C')
 
         pdf.set_font("Arial", size=12)
         pdf.ln(8)
-        pdf.multi_cell(
-            0, 10, "Este relatório contém uma análise detalhada das velocidades ST registradas na corrida.")
+        pdf.multi_cell(0, 10, "Este relatório contém uma análise detalhada das velocidades ST registradas na corrida.")
 
-        pdf.ln(8)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "Resumo de ST por Piloto", ln=True)
-        pdf.set_font("Arial", size=10)
-        for idx, row in df_st.iterrows():
-            pdf.cell(
-                0, 8, f"{row['Piloto']}: Maior ST = {row['Maior ST']:.1f}, Média Top 5 ST = {row['Média dos 5 maiores ST']:.1f}", ln=True)
+        # Resumo de ST por Piloto
+        if incluir_resumo:
+            pdf.ln(8)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Resumo de ST por Piloto", ln=True)
+            pdf.set_font("Arial", size=10)
+            for idx, row in df_st.iterrows():
+                pdf.cell(
+                    0, 8, f"{row['Piloto']}: Maior ST = {row['Maior ST']:.1f}, Média Top 5 ST = {row['Média dos 5 maiores ST']:.1f}", ln=True)
 
-        pdf.ln(10)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "Boxplot por Montadora", ln=True)
-        pdf.image(box_path, w=180)
+        # Boxplot por Montadora
+        if incluir_boxplot and box_path and os.path.exists(box_path):
+            pdf.ln(10)
+            pdf.add_page(orientation='L')  # Nova página em paisagem
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Boxplot por Montadora", ln=True)
+            pdf.image(box_path, w=250)  # Ajustar largura para modo paisagem
 
-        pdf.ln(10)
-        pdf.cell(0, 10, "Maior ST por Piloto", ln=True)
-        pdf.image(maior_path, w=180)
+        # Maior ST por Piloto
+        if incluir_maior_st and maior_path and os.path.exists(maior_path):
+            pdf.ln(10)
+            pdf.add_page(orientation='L')  # Nova página em paisagem
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Maior ST por Piloto", ln=True)
+            pdf.image(maior_path, w=250)  # Ajustar largura para modo paisagem
 
-        pdf.ln(10)
-        pdf.cell(0, 10, "Média das 5 maiores ST por Piloto", ln=True)
-        pdf.image(media_path, w=180)
+        # Média das 5 maiores ST por Piloto
+        if incluir_media_top5_st and media_path and os.path.exists(media_path):
+            pdf.ln(10)
+            pdf.add_page(orientation='L')  # Nova página em paisagem
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Média das 5 maiores ST por Piloto", ln=True)
+            pdf.image(media_path, w=250)  # Ajustar largura para modo paisagem
 
         output_path = os.path.join(os.getcwd(), nome_arquivo)
         pdf.output(output_path)
