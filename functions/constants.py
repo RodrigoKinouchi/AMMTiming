@@ -29,6 +29,38 @@ pilotos_cor = {
     '121 - Felipe Baptista': 'navy'
 }
 
+pilotos_cor_amattheis = {
+    '0 - Caca Bueno': 'silver',
+    '6 - Helio Castroneves': 'green',
+    '5 - Denis Navarro': 'silver',
+    '4 - Julio Campos': 'silver',
+    '7 - Joao Paulo de Oliveira': 'silver',
+    '8 - Rafael Suzuki': 'silver',
+    '9 - Arthur Gama': 'silver',
+    '10 - Ricardo Zonta': 'silver',
+    '11 - Gaetano Di Mauro': 'silver',
+    '12 - Lucas Foresti': 'grey',
+    '18 - Allam Khodair': 'silver',
+    '19 - Felipe Massa': 'silver',
+    '21 - Thiago Camilo': 'red',
+    '73 - Enzo Elias': 'silver',
+    '29 - Daniel Serra': 'silver',
+    '30 - Cesar Ramos': 'yellow',
+    '33 - Nelson Piquet Jr': 'silver',
+    '38 - Zezinho Mugiatti': 'silver',
+    '44- Bruno Baptista': 'silver',
+    '51 - Atila Abreu': 'silver',
+    '81 - Arthur Leist': 'silver',
+    '83 - Gabriel Casagrande': 'purple',
+    '85 - Guilherme Salas': 'silver',
+    '88 - Felipe Fraga': 'silver',
+    '90 - Ricardo Mauricio': 'silver',
+    '95 - Lucas Kohl': 'silver',
+    '101 - Gianluca Petecof': 'silver',
+    '111 - Rubens Barrichello': 'silver',
+    '121 - Felipe Baptista': 'navy'
+}
+
 equipes_cor = {
     'Ipiranga Racing': 'yellow',
     'Eurofarma Rc': 'greenyellow',
