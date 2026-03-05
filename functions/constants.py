@@ -26,7 +26,8 @@ pilotos_cor = {
     '95 - Lucas Kohl': 'orange',
     '101 - Gianluca Petecof': 'seashell',
     '111 - Rubens Barrichello': 'seashell',
-    '121 - Felipe Baptista': 'navy'
+    '121 - Felipe Baptista': 'navy',
+    '27 - Renan Guerra': 'dodgerblue'
 }
 
 pilotos_cor_amattheis = {
@@ -58,7 +59,8 @@ pilotos_cor_amattheis = {
     '95 - Lucas Kohl': 'silver',
     '101 - Gianluca Petecof': 'silver',
     '111 - Rubens Barrichello': 'silver',
-    '121 - Felipe Baptista': 'silver'
+    '121 - Felipe Baptista': 'silver',
+    '27 - Renan Guerra': 'dodgerblue'
 }
 
 equipes_cor = {
@@ -112,7 +114,8 @@ equipes_pilotos = {
     '111 - Rubens Barrichello': 'Full Time/Cavaleiro',
     '121 - Felipe Baptista': 'Car Racing Ktf',
     '301 - Rafael Reis': 'Car Racing Sterling',
-    '444 - Vicente Orige': 'Scuderia Bandeiras Sports'
+    '444 - Vicente Orige': 'Scuderia Bandeiras Sports',
+    '27 - Renan Guerra': 'Amattheis Vogel'
 }
 
 modelo_cor = {
@@ -153,5 +156,6 @@ piloto_modelo = {
     '0 - Caca Bueno': 'Chevrolet',
     '9 - Arthur Gama': 'Toyota',
     '33 - Nelson Piquet Jr': 'Mitsubishi',
-    '4 - Julio Campos': 'Toyota'
+    '4 - Julio Campos': 'Toyota',
+    '27 - Renan Guerra': 'Chevrolet'
 }

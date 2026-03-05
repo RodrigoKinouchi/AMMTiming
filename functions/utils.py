@@ -449,6 +449,7 @@ def colorir_piloto(row):
     color_map = {
         '83 - Gabriel Casagrande': 'background-color: purple; color: white;',
         '12 - Lucas Foresti': 'background-color: gray; color: white;',
+        '27 - Renan Guerra': 'background-color: dodgerblue; color: white;',
         '30 - Cesar Ramos': 'background-color: yellow; color: black;',
         '21 - Thiago Camilo': 'background-color: red; color: white;',
     }

@@ -3,7 +3,7 @@ import streamlit as st
 import plotly.express as px
 from PIL import Image
 import re
-from functions.utils import normalizar_coluna_velocidade, validar_csv, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, imagem_base64, criar_matriz_velocidades_numeral, filtrar_gap, plotar_raising_average_st, calcular_raising_average_st
+from functions.utils import normalizar_coluna_velocidade, validar_csv, separar_pilotos_por_volta, maior_velocidade_por_piloto,  convert_time_to_seconds, processar_resultado_csv, montar_dataframe_completo, gerar_boxplot_setor, processar_gap_st, gerar_grafico_gap_vs_st, gerar_grafico_gap_vs_volta, montar_dataframe_resultado_corrida, colorir_piloto, criar_matriz_velocidades, formatar_st_com_cores_interativo, preparar_dados_boxplot, gerar_boxplot_st, calcular_st_maior_e_media, plotar_maior_st, plotar_media_top_5_st, gerar_relatorio_completo_speed_report, gerar_ranking_st, gerar_boxplot_laptimes_sem_cor, gerar_boxplot_laptimes, gerar_grafico_laptimes_por_volta, gerar_grafico_gap_para_piloto_referencia, gerar_ranking_por_volta, criar_matriz_velocidades_numeral, filtrar_gap, plotar_raising_average_st, calcular_raising_average_st
 from functions.constants import pilotos_cor, equipes_pilotos, equipes_cor, modelo_cor, piloto_modelo, pilotos_cor_amattheis
 from functions.database import salvar_sessao, listar_sessoes, buscar_sessao_por_id, excluir_sessao, obter_estatisticas
 import plotly.graph_objects as go
@@ -16,14 +16,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded")
 
-# Carrega e converte imagem do carro
-carro_b64 = imagem_base64("images/carro.png")
-
-# === CSS das faixas e do carro ===
-st.markdown(f"""
+# === CSS das faixas no canto inferior direito (laranja + cinza escuro, mantendo o layout original) ===
+st.markdown(
+    """
     <style>
-    /* Container com as faixas e imagem */
-    .decoration-container {{
+    .decoration-container {
         position: fixed;
         bottom: 0;
         right: 0;
@@ -31,39 +28,32 @@ st.markdown(f"""
         height: 300px;
         z-index: 0;  /* IMPORTANTE: manter baixo */
         pointer-events: none; /* permite clique nos elementos do app */
-    }}
-
-    .faixas {{
+    }
+    .faixas {
         position: absolute;
         bottom: 0;
         right: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg,
+        background: linear-gradient(
+            135deg,
             #0047BA 0%,
             #0047BA 33%,
             #FF6600 33%,
             #FF6600 66%,
-            #FFCC00 66%,
-            #FFCC00 100%);
+            #cccaca 66%,
+            #cccaca 100%
+        );
         clip-path: polygon(100% 100%, 0% 100%, 100% 0%);
         opacity: 0.5;
-    }}
-
-    .carro-img {{
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 240px;
-        opacity: 0.95;
-    }}
+    }
     </style>
-
     <div class="decoration-container">
         <div class="faixas"></div>
-        <img src="data:image/png;base64,{carro_b64}" class="carro-img">
     </div>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 # Carregando uma imagem
 image = Image.open('images/capa.png')
 
@@ -470,7 +460,7 @@ if tem_dados:
                 # Padrão Amattheis: todos em silver, exceto os pilotos Amattheis destacados
                 # Lista dos pilotos Amattheis que devem ser destacados
                 pilotos_amattheis = ['6 - Helio Castroneves', '12 - Lucas Foresti', 
-                                    '21 - Thiago Camilo', '30 - Cesar Ramos', 
+                                    '21 - Thiago Camilo', '27 - Renan Guerra', '30 - Cesar Ramos', 
                                     '83 - Gabriel Casagrande']
                 
                 for piloto in pilotos:
@@ -1029,7 +1019,7 @@ if tem_dados:
                 )
 
                 # Pilotos do time para destacar
-                team_pilots = ['21 - Thiago Camilo', '30 - Cesar Ramos']
+                team_pilots = ['21 - Thiago Camilo', '27 - Renan Guerra', '30 - Cesar Ramos']
 
                 # Dados da volta selecionada
                 lap_data = ranked_df[ranked_df['Lap'] == selected_lap].copy()
