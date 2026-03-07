@@ -63,7 +63,7 @@ pilotos_cor_amattheis = {
     '27 - Renan Guerra': 'dodgerblue'
 }
 
-equipes_cor = {
+equipes_cor_old = {
     'Ipiranga Racing': 'yellow',
     'Eurofarma Rc': 'greenyellow',
     'Cavaleiro Sports': 'darkgreen',
@@ -82,7 +82,26 @@ equipes_cor = {
     'Scuderia Bandeiras': 'lightblue'
 }
 
-equipes_pilotos = {
+equipes_cor = {
+    'MERCADO LIVRE RACING TEAM': 'yellow',
+    'EUROFARMA RC': 'greenyellow',
+    'VALDA-CAVALEIRO SPORTS': 'darkgreen',
+    'FULL TIME GAZOO RACING': 'crimson',
+    'CAR RACING': 'orange',
+    'TEAM RC': 'red',
+    'VOGEL MOTORSPORT': 'grey',
+    'TMG RACING': 'darkgreen',
+    'RTR SG28 TEAM': 'navy',
+    'SCUDERIA CHIARELLI': 'seashell',
+    'RTR SG28': 'crimson',
+    'BLAU MOTORSPORT': 'blue',
+    'CROWN RACING': 'black',
+    'STERLING RACING': 'white',
+    'SCUDERIA BANDEIRAS SPORTS': 'silver',
+    'SCUDERIA BANDEIRAS': 'lightblue'
+}
+
+equipes_pilotos_old = {
     '0 - Caca Bueno': 'Scuderia Chiarelli',
     '4 - Julio Campos': 'Crown Racing',
     '5 - Denis Navarro': 'Full Time/Cavaleiro',
@@ -124,7 +143,7 @@ modelo_cor = {
     'Chevrolet': 'blue'
 }
 
-piloto_modelo = {
+piloto_modelo_old = {
     '88 - Felipe Fraga': 'Mitsubishi',
     '11 - Gaetano Di Mauro': 'Mitsubishi',
     '85 - Guilherme Salas': 'Chevrolet',
@@ -158,4 +177,76 @@ piloto_modelo = {
     '33 - Nelson Piquet Jr': 'Mitsubishi',
     '4 - Julio Campos': 'Toyota',
     '27 - Renan Guerra': 'Chevrolet'
+}
+
+piloto_modelo = {
+    '11 - Gaetano Di Mauro': 'Mitsubishi',
+    '1 - Felipe Fraga': 'Mitsubishi',
+    '4 - Julio Campos': 'Chevrolet',
+    '83 - Gabriel Casagrande': 'Chevrolet',
+    '29 - Daniel Serra': 'Mitsubishi',
+    '7 - Sergio Sette Camara': 'Mitsubishi',
+    '293 - Leonardo Reis': 'Toyota',
+    '8 - Rafael Suzuki': 'Chevrolet',
+    '111 - Rubens Barrichello': 'Mitsubishi',
+    '38 - Zezinho Muggiati': 'Mitsubishi',
+    '21 - Thiago Camilo': 'Toyota',
+    '73 - Enzo Elias': 'Toyota',
+    '81 - Arthur Leist': 'Toyota',
+    '12 - Lucas Foresti': 'Chevrolet',
+    '30 - Cesar Ramos': 'Toyota',
+    '85 - Guilherme Salas': 'Chevrolet',
+    '19 - Felipe Massa': 'Chevrolet',
+    '444 - Vicente Orige': 'Mitsubishi',
+    '33 - Nelson Piquet Jr': 'Mitsubishi',
+    '0 - Caca Bueno': 'Chevrolet',
+    '18 - Allam Khodair': 'Mitsubishi',
+    '301 - Rafael Reis': 'Toyota',
+    '51 - Atila Abreu': 'Chevrolet',
+    '80 - Alfredinho Ibiapina': 'Toyota',
+    '27 - Renan Guerra': 'Toyota',
+    '6 - Helio Castroneves': 'Chevrolet',
+    '10 - Ricardo Zonta': 'Toyota',
+    '22 - Andre Moraes Jr': 'Chevrolet',
+    '95 - Lucas Kohl': 'Toyota',
+    '90 - Ricardo Mauricio': 'Chevrolet',
+    '24 - Felipe Bartz': 'Mitsubishi',
+    '97 - Bruna Tomaselli': 'Toyota',
+    '121 - Felipe Baptista': 'Mitsubishi',
+}
+
+equipes_pilotos = {
+    '11 - Gaetano Di Mauro': 'EUROFARMA RC',
+    '1 - Felipe Fraga': 'EUROFARMA RC',
+    '4 - Julio Campos': 'TMG RACING',
+    '83 - Gabriel Casagrande': 'VOGEL MOTORSPORT',
+    '29 - Daniel Serra': 'BLAU MOTORSPORT',
+    '7 - Sergio Sette Camara': 'TEAM RC',
+    '293 - Leonardo Reis': 'CAR RACING',
+    '8 - Rafael Suzuki': 'SCUDERIA BANDEIRAS',
+    '111 - Rubens Barrichello': 'SCUDERIA BANDEIRAS SPORTS',
+    '38 - Zezinho Muggiati': 'TEAM RC',
+    '21 - Thiago Camilo': 'MERCADO LIVRE RACING TEAM',
+    '73 - Enzo Elias': 'AMATTHEIS/TMG',
+    '81 - Arthur Leist': 'CROWN RACING',
+    '12 - Lucas Foresti': 'VOGEL MOTORSPORT',
+    '30 - Cesar Ramos': 'MERCADO LIVRE RACING TEAM',
+    '85 - Guilherme Salas': 'VALDA-CAVALEIRO SPORTS',
+    '19 - Felipe Massa': 'TMG RACING',
+    '444 - Vicente Orige': 'STERLING RACING',
+    '33 - Nelson Piquet Jr': 'SCUDERIA BANDEIRAS',
+    '0 - Caca Bueno': 'SCUDERIA CHIARELLI',
+    '18 - Allam Khodair': 'BLAU MOTORSPORT',
+    '301 - Rafael Reis': 'CAR RACING',
+    '51 - Atila Abreu': 'SCUDERIA BANDEIRAS SPORT',
+    '80 - Alfredinho Ibiapina': 'FULL TIME GAZOO RACING',
+    '27 - Renan Guerra': 'AMATTHEIS/TMG',
+    '6 - Helio Castroneves': 'MERCADO LIVRE RACING',
+    '10 - Ricardo Zonta': 'FULL TIME GAZOO RACING',
+    '22 - Andre Moraes Jr': 'SCUDERIA CHIARELLI',
+    '95 - Lucas Kohl': 'CROWN RACING',
+    '90 - Ricardo Mauricio': 'VALDA-CAVALEIRO SPORTS',
+    '24 - Felipe Bartz': 'RTR SG28 TEAM',
+    '97 - Bruna Tomaselli': 'RTR SG28',
+    '121 - Felipe Baptista': 'STERLING RACING',
 }
