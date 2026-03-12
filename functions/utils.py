@@ -1226,8 +1226,9 @@ def filtrar_gap(df, limite_gap):
     if 'GAP' not in df.columns:
         return df
 
-    # Mantém apenas linhas cujo GAP é maior ou igual ao limite
-    return df[df['GAP'] >= limite_gap]
+    # Mantém linhas cujo GAP é maior ou igual ao limite
+    # e SEMPRE mantém o líder da volta (GAP == 0)
+    return df[(df['GAP'] >= limite_gap) | (df['GAP'] == 0)]
 
 
 def calcular_raising_average_st(driver_info: dict) -> dict:
