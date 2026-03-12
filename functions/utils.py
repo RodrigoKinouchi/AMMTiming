@@ -20,45 +20,46 @@ from typing import Tuple
 def validar_csv(df: pd.DataFrame) -> Tuple[bool, str]:
     """
     Valida se o CSV possui todas as colunas obrigatórias e dados válidos.
-    
+
     :param df: DataFrame a ser validado
     :return: Tupla (é_válido, mensagem_erro)
     """
     # Colunas obrigatórias esperadas
-    colunas_obrigatorias = ['Time of Day', 'Lap', 'Lap Tm', 'S1 Tm', 'S2 Tm', 'S3 Tm']
-    
+    colunas_obrigatorias = ['Time of Day', 'Lap',
+                            'Lap Tm', 'S1 Tm', 'S2 Tm', 'S3 Tm']
+
     # Verificar se o DataFrame está vazio
     if df.empty:
         return False, "O arquivo CSV está vazio. Verifique se o arquivo contém dados."
-    
+
     # Verificar colunas obrigatórias
     colunas_faltando = []
     colunas_df = [col.strip() for col in df.columns]
-    
+
     for col_obrigatoria in colunas_obrigatorias:
         if col_obrigatoria not in colunas_df:
             colunas_faltando.append(col_obrigatoria)
-    
+
     if colunas_faltando:
         return False, f"Colunas obrigatórias não encontradas: {', '.join(colunas_faltando)}. " \
-                     f"Colunas encontradas: {', '.join(colunas_df[:10])}" + \
-                     ("..." if len(colunas_df) > 10 else "")
-    
+            f"Colunas encontradas: {', '.join(colunas_df[:10])}" + \
+            ("..." if len(colunas_df) > 10 else "")
+
     # Verificar se há coluna de velocidade (ST ou SPT)
     colunas_upper = [col.strip().upper() for col in df.columns]
     if 'ST' not in colunas_upper and 'SPT' not in colunas_upper:
         return False, "Coluna de velocidade final ('ST' ou 'SPT') não encontrada no CSV."
-    
+
     # Verificar se há dados válidos (não apenas cabeçalhos)
     if len(df) == 0:
         return False, "O arquivo CSV não contém dados, apenas cabeçalhos."
-    
+
     # Verificar se há pelo menos alguns dados não nulos nas colunas principais
     colunas_principais = ['Lap', 'Lap Tm']
     for col in colunas_principais:
         if col in df.columns and df[col].isna().all():
             return False, f"A coluna '{col}' está completamente vazia."
-    
+
     return True, ""
 
 
@@ -630,7 +631,8 @@ def plotar_maior_st(df: pd.DataFrame, modelo_cor: dict, esquema_cores: str = 'Mo
     # Determinar cores conforme o esquema selecionado
     if esquema_cores == 'Padrão Amattheis':
         # Padrão Amattheis: todos em silver, exceto os pilotos Amattheis destacados
-        cores = [pilotos_cor_amattheis.get(piloto, 'silver') for piloto in df['Piloto']]
+        cores = [pilotos_cor_amattheis.get(
+            piloto, 'silver') for piloto in df['Piloto']]
     else:
         # Padrão: cores por montadora
         cores = [modelo_cor.get(modelo, 'gray') for modelo in df['Piloto'].apply(
@@ -700,7 +702,8 @@ def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict, esquema_cores: str
     # Determinar cores conforme o esquema selecionado
     if esquema_cores == 'Padrão Amattheis':
         # Padrão Amattheis: todos em silver, exceto os pilotos Amattheis destacados
-        cores = [pilotos_cor_amattheis.get(piloto, 'silver') for piloto in df['Piloto']]
+        cores = [pilotos_cor_amattheis.get(
+            piloto, 'silver') for piloto in df['Piloto']]
     else:
         # Padrão: cores por montadora
         cores = [modelo_cor.get(modelo, 'gray') for modelo in df['Piloto'].apply(
@@ -748,104 +751,111 @@ def plotar_media_top_5_st(df: pd.DataFrame, modelo_cor: dict, esquema_cores: str
 def criar_capa_pdf(pdf: FPDF, info_sessao: dict):
     """
     Cria a página de capa do relatório PDF com logos e informações da sessão.
-    
+
     Args:
         pdf: Objeto FPDF
         info_sessao: Dicionário com informações da sessão (evento, data, circuito, etc.)
     """
     # Adicionar página de capa em modo paisagem
     pdf.add_page(orientation='L')
-    
+
     # Caminhos das imagens (relativos ao diretório de trabalho)
     logo_equipe_path = "images/capa2.png"
     logo_campeonato_path = "images/stocklogo.png"
-    
+
     # Verificar se as imagens existem
     logo_equipe_existe = os.path.exists(logo_equipe_path)
     logo_campeonato_existe = os.path.exists(logo_campeonato_path)
-    
+
     # Altura e largura da página em modo paisagem (297x210mm)
     page_width = 297
     page_height = 210
-    
+
     # Espaçamento inicial
     y_pos = 30
-    
+
     # Logo da equipe (lado esquerdo)
     if logo_equipe_existe:
         try:
             # Ajustar tamanho do logo da equipe
-            pdf.image(logo_equipe_path, x=20, y=y_pos, w=70, h=0)  # h=0 mantém proporção
+            pdf.image(logo_equipe_path, x=20, y=y_pos,
+                      w=70, h=0)  # h=0 mantém proporção
         except Exception:
             pass
-    
+
     # Logo do campeonato (lado direito)
     if logo_campeonato_existe:
         try:
-            pdf.image(logo_campeonato_path, x=page_width - 90, y=y_pos, w=60, h=0)
+            pdf.image(logo_campeonato_path, x=page_width -
+                      90, y=y_pos, w=60, h=0)
         except Exception:
             pass
-    
+
     # Título principal (centralizado)
     y_pos = 100
     pdf.set_font("Arial", "B", 28)
     pdf.set_xy(0, y_pos)
     pdf.cell(page_width, 20, "SPEED REPORT", ln=True, align='C')
-    
+
     # Linha separadora
     y_pos = 125
     pdf.set_line_width(0.5)
     pdf.line(30, y_pos, page_width - 30, y_pos)
-    
+
     # Informações da sessão
     y_pos = 140
     pdf.set_font("Arial", "B", 18)
     pdf.set_xy(0, y_pos)
     pdf.cell(page_width, 12, "Informações da Sessão", ln=True, align='C')
-    
+
     y_pos = 160
     pdf.set_font("Arial", "", 14)
-    
+
     # Centralizar informações
     x_start = 50
-    
+
     # Evento
     if info_sessao.get('evento'):
         pdf.set_xy(x_start, y_pos)
-        pdf.cell(page_width - 2*x_start, 10, f"Evento: {info_sessao['evento']}", align='L')
+        pdf.cell(page_width - 2*x_start, 10,
+                 f"Evento: {info_sessao['evento']}", align='L')
         y_pos += 12
-    
+
     # Data
     if info_sessao.get('data'):
         pdf.set_xy(x_start, y_pos)
-        pdf.cell(page_width - 2*x_start, 10, f"Data: {info_sessao['data']}", align='L')
+        pdf.cell(page_width - 2*x_start, 10,
+                 f"Data: {info_sessao['data']}", align='L')
         y_pos += 12
-    
+
     # Circuito
     if info_sessao.get('circuito'):
         pdf.set_xy(x_start, y_pos)
-        pdf.cell(page_width - 2*x_start, 10, f"Circuito: {info_sessao['circuito']}", align='L')
+        pdf.cell(page_width - 2*x_start, 10,
+                 f"Circuito: {info_sessao['circuito']}", align='L')
         y_pos += 12
-    
+
     # Tipo de Sessão
     if info_sessao.get('tipo_sessao'):
         pdf.set_xy(x_start, y_pos)
-        pdf.cell(page_width - 2*x_start, 10, f"Tipo de Sessão: {info_sessao['tipo_sessao']}", align='L')
+        pdf.cell(page_width - 2*x_start, 10,
+                 f"Tipo de Sessão: {info_sessao['tipo_sessao']}", align='L')
         y_pos += 12
-    
+
     # Observações
     if info_sessao.get('observacoes'):
         y_pos += 8
         pdf.set_font("Arial", "I", 11)
         pdf.set_xy(x_start, y_pos)
-        pdf.multi_cell(page_width - 2*x_start, 7, f"Observações: {info_sessao['observacoes']}", align='L')
+        pdf.multi_cell(page_width - 2*x_start, 7,
+                       f"Observações: {info_sessao['observacoes']}", align='L')
 
 
 def gerar_relatorio_completo_speed_report(
-    df_st, 
-    df_matriz_st, 
-    fig_box=None, 
-    fig_maior_st=None, 
+    df_st,
+    df_matriz_st,
+    fig_box=None,
+    fig_maior_st=None,
     fig_media_top_5_st=None,
     incluir_resumo=True,
     incluir_boxplot=True,
@@ -878,34 +888,37 @@ def gerar_relatorio_completo_speed_report(
         box_path = None
         maior_path = None
         media_path = None
-        
+
         if incluir_boxplot and fig_box is not None:
             box_path = os.path.join(temp_dir, "boxplot.png")
             pio.write_image(fig_box, box_path, format='png', scale=2)
-        
+
         if incluir_maior_st and fig_maior_st is not None:
             maior_path = os.path.join(temp_dir, "maior_st.png")
             pio.write_image(fig_maior_st, maior_path, format='png', scale=2)
-        
+
         if incluir_media_top5_st and fig_media_top_5_st is not None:
             media_path = os.path.join(temp_dir, "media_top5_st.png")
-            pio.write_image(fig_media_top_5_st, media_path, format='png', scale=2)
+            pio.write_image(fig_media_top_5_st, media_path,
+                            format='png', scale=2)
 
         # Inicializar PDF em modo paisagem
         pdf = FPDF(orientation='L', unit='mm', format='A4')
-        
+
         # Criar capa
         if info_sessao:
             criar_capa_pdf(pdf, info_sessao)
-        
+
         # Página de conteúdo
         pdf.add_page(orientation='L')
         pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, "Speed Report - Relatório Personalizado", ln=True, align='C')
+        pdf.cell(0, 10, "Speed Report - Relatório Personalizado",
+                 ln=True, align='C')
 
         pdf.set_font("Arial", size=12)
         pdf.ln(8)
-        pdf.multi_cell(0, 10, "Este relatório contém uma análise detalhada das velocidades ST registradas na corrida.")
+        pdf.multi_cell(
+            0, 10, "Este relatório contém uma análise detalhada das velocidades ST registradas na corrida.")
 
         # Resumo de ST por Piloto
         if incluir_resumo:
@@ -1205,10 +1218,16 @@ def criar_matriz_velocidades_numeral(driver_info: dict) -> pd.DataFrame:
 
 
 def filtrar_gap(df, limite_gap):
-    """Filtra os dados para mostrar apenas os pilotos com GAP menor que o limite especificado."""
-    # Filtra os dados com base no limite de GAP
-    df_filtrado = df[df['GAP'] > limite_gap]
-    return df_filtrado
+    """
+    Filtra os dados para manter apenas voltas com GAP MAIOR ou IGUAL ao limite especificado.
+
+    Exemplo: se limite_gap = 1.0, mantém apenas GAP >= 1.0 e remove GAP < 1.0.
+    """
+    if 'GAP' not in df.columns:
+        return df
+
+    # Mantém apenas linhas cujo GAP é maior ou igual ao limite
+    return df[df['GAP'] >= limite_gap]
 
 
 def calcular_raising_average_st(driver_info: dict) -> dict:

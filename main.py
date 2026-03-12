@@ -397,7 +397,7 @@ if tem_dados:
             if is_filtrar_gap:
                 df_gap = filtrar_gap(df_gap, limite_gap)
                 st.caption(
-                    f"{len(df_gap)} voltas consideradas após remover STs com GAP ≤ {limite_gap:.1f}s")
+                    f"{len(df_gap)} voltas consideradas após remover STs com GAP < {limite_gap:.1f}s")
 
             # Separar pilotos normalmente usando o DataFrame bruto
             driver_info = separar_pilotos_por_volta(df)
@@ -760,7 +760,7 @@ if tem_dados:
             if is_filtrar_gap:
                 df_gap = filtrar_gap(df_gap, limite_gap)
                 st.caption(
-                    f"{len(df_gap)} voltas consideradas após remover STs com GAP ≤ {limite_gap:.1f}s")
+                    f"{len(df_gap)} voltas consideradas após remover STs com GAP < {limite_gap:.1f}s")
 
             # Separar pilotos com base no dataframe bruto
             driver_info = separar_pilotos_por_volta(df)
